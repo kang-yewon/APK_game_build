@@ -1,4 +1,4 @@
-package com.kangyewon.arcadegames;
+package com.kangyewon.calculator;
 
 import com.getcapacitor.BridgeActivity;
 
