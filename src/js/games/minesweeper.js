@@ -3,9 +3,9 @@ import { getHighScore, saveHighScore, gameTitles } from '../storage.js';
 import { modal } from '../modal.js';
 
 const DIFFICULTIES = {
-  1: { name: '1단계 (쉬움)', rows: 8, cols: 8, mines: 10 },
-  2: { name: '2단계 (보통)', rows: 10, cols: 10, mines: 18 },
-  3: { name: '3단계 (어려움)', rows: 12, cols: 12, mines: 30 }
+  1: { name: '1단계 (쉬움)', cols: 8, rows: 12, mines: 12 },
+  2: { name: '2단계 (보통)', cols: 10, rows: 15, mines: 25 },
+  3: { name: '3단계 (어려움)', cols: 12, rows: 18, mines: 40 }
 };
 
 export class MinesweeperGame {
@@ -15,9 +15,9 @@ export class MinesweeperGame {
     this.onReturnHome = onReturnHome;
 
     this.currentLevel = 1;
-    this.rows = 8;
     this.cols = 8;
-    this.totalMines = 10;
+    this.rows = 12;
+    this.totalMines = 12;
     this.placedFlags = 0;
 
     this.board = [];
@@ -31,9 +31,8 @@ export class MinesweeperGame {
     this.timerInterval = null;
 
     // Layout
-    this.boardSize = 0;
-    this.boardX = 0;
-    this.boardY = 0;
+    this.boardSizeW = 0;
+    this.boardSizeH = 0;
     this.cellSize = 0;
 
     // Long press tracking
@@ -61,7 +60,6 @@ export class MinesweeperGame {
   }
 
   initControls() {
-    // Bottom Restart Button
     const btnRestart = document.getElementById('minesweeper-btn-restart');
     btnRestart?.addEventListener('click', () => {
       sound.playClick();
@@ -79,8 +77,8 @@ export class MinesweeperGame {
     };
 
     const getCell = (pos) => {
-      const col = Math.floor((pos.x - this.boardX) / this.cellSize);
-      const row = Math.floor((pos.y - this.boardY) / this.cellSize);
+      const col = Math.floor(pos.x / this.cellSize);
+      const row = Math.floor(pos.y / this.cellSize);
       if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
         return { r: row, c: col };
       }
@@ -176,24 +174,22 @@ export class MinesweeperGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Fills 100% available area
-    const availWidth = parent.clientWidth || 360;
-    const availHeight = parent.clientHeight || 360;
-    const size = Math.min(availWidth, availHeight);
+    // Fill available rectangular area
+    const availW = parent.clientWidth || 360;
+    const availH = (parent.clientHeight - 24) || 480;
+
+    this.cellSize = Math.floor(Math.min(availW / this.cols, availH / this.rows));
+    this.boardSizeW = this.cols * this.cellSize;
+    this.boardSizeH = this.rows * this.cellSize;
     const dpr = window.devicePixelRatio || 1;
 
-    this.canvas.width = size * dpr;
-    this.canvas.height = size * dpr;
-    this.canvas.style.width = `${size}px`;
-    this.canvas.style.height = `${size}px`;
+    this.canvas.width = this.boardSizeW * dpr;
+    this.canvas.height = this.boardSizeH * dpr;
+    this.canvas.style.width = `${this.boardSizeW}px`;
+    this.canvas.style.height = `${this.boardSizeH}px`;
 
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
-
-    this.boardSize = size * 0.98;
-    this.boardX = (size - this.boardSize) / 2;
-    this.boardY = (size - this.boardSize) / 2;
-    this.cellSize = this.boardSize / this.cols;
 
     this.render();
   }
@@ -211,8 +207,8 @@ export class MinesweeperGame {
   setDifficultyAndStart(level = 1) {
     this.currentLevel = level;
     const conf = DIFFICULTIES[level] || DIFFICULTIES[1];
-    this.rows = conf.rows;
     this.cols = conf.cols;
+    this.rows = conf.rows;
     this.totalMines = conf.mines;
 
     if (this.timerInterval) clearInterval(this.timerInterval);
@@ -429,14 +425,11 @@ export class MinesweeperGame {
   }
 
   render() {
-    const w = this.canvas.width / (window.devicePixelRatio || 1);
-    const h = this.canvas.height / (window.devicePixelRatio || 1);
+    const w = this.boardSizeW;
+    const h = this.boardSizeH;
 
     this.ctx.fillStyle = '#0f172a';
     this.ctx.fillRect(0, 0, w, h);
-
-    this.ctx.fillStyle = '#334155';
-    this.ctx.fillRect(this.boardX - 3, this.boardY - 3, this.boardSize + 6, this.boardSize + 6);
 
     const NUMBER_COLORS = [
       '',
@@ -453,8 +446,8 @@ export class MinesweeperGame {
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const cell = this.board[r][c];
-        const x = this.boardX + c * this.cellSize;
-        const y = this.boardY + r * this.cellSize;
+        const x = c * this.cellSize;
+        const y = r * this.cellSize;
         const s = this.cellSize;
 
         if (cell.isRevealed) {
@@ -465,7 +458,7 @@ export class MinesweeperGame {
             this.ctx.strokeRect(x, y, s, s);
 
             this.ctx.fillStyle = '#000000';
-            this.ctx.font = `${Math.floor(s * 0.6)}px sans-serif`;
+            this.ctx.font = `${Math.floor(s * 0.62)}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('💣', x + s / 2, y + s / 2 + 1);
@@ -478,7 +471,7 @@ export class MinesweeperGame {
 
             if (cell.neighborCount > 0) {
               this.ctx.fillStyle = NUMBER_COLORS[cell.neighborCount] || '#000000';
-              this.ctx.font = `bold ${Math.floor(s * 0.6)}px monospace`;
+              this.ctx.font = `bold ${Math.floor(s * 0.62)}px monospace`;
               this.ctx.textAlign = 'center';
               this.ctx.textBaseline = 'middle';
               this.ctx.fillText(cell.neighborCount, x + s / 2, y + s / 2 + 1);
@@ -497,7 +490,7 @@ export class MinesweeperGame {
           this.ctx.fillRect(x + s - 3, y, 3, s);
 
           if (cell.isFlagged) {
-            this.ctx.font = `${Math.floor(s * 0.6)}px sans-serif`;
+            this.ctx.font = `${Math.floor(s * 0.62)}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('🚩', x + s / 2, y + s / 2 + 1);

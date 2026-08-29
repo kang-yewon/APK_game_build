@@ -8,16 +8,17 @@ export class SnakeGame {
     this.ctx = canvas.getContext('2d');
     this.onReturnHome = onReturnHome;
 
-    this.gridSize = 13;
+    this.gridCols = 15; // Dynamic rectangular grid
+    this.gridRows = 20;
     this.tileSize = 0;
 
     this.snake = [];
-    this.direction = { x: 1, y: 0 };
-    this.nextDirection = { x: 1, y: 0 };
+    this.direction = { x: 0, y: -1 };
+    this.nextDirection = { x: 0, y: -1 };
     this.food = { x: 0, y: 0 };
     this.score = 0;
     this.highScore = getHighScore('snake');
-    this.speed = 135;
+    this.speed = 130;
     this.lastTime = 0;
     this.accumulatedTime = 0;
 
@@ -82,21 +83,26 @@ export class SnakeGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Fills 100% available area
-    const availWidth = parent.clientWidth || 360;
-    const availHeight = parent.clientHeight || 360;
-    const size = Math.min(availWidth, availHeight);
+    // Full rectangular width and height
+    const availW = parent.clientWidth || 360;
+    const availH = parent.clientHeight || 480;
+
+    this.gridCols = 15;
+    this.tileSize = Math.floor(availW / this.gridCols);
+    this.gridRows = Math.floor(availH / this.tileSize);
+
+    const canvasW = this.gridCols * this.tileSize;
+    const canvasH = this.gridRows * this.tileSize;
     const dpr = window.devicePixelRatio || 1;
 
-    this.canvas.width = size * dpr;
-    this.canvas.height = size * dpr;
-    this.canvas.style.width = `${size}px`;
-    this.canvas.style.height = `${size}px`;
+    this.canvas.width = canvasW * dpr;
+    this.canvas.height = canvasH * dpr;
+    this.canvas.style.width = `${canvasW}px`;
+    this.canvas.style.height = `${canvasH}px`;
 
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
-    this.tileSize = size / this.gridSize;
     this.render();
   }
 
@@ -104,23 +110,26 @@ export class SnakeGame {
     this.highScore = getHighScore('snake');
     this.score = 0;
     this.updateScoreUI();
-    this.speed = 135;
+    this.speed = 130;
 
-    const mid = Math.floor(this.gridSize / 2);
+    this.resize();
+
+    const midX = Math.floor(this.gridCols / 2);
+    const midY = Math.floor(this.gridRows / 2);
+
     this.snake = [
-      { x: mid, y: mid },
-      { x: mid - 1, y: mid },
-      { x: mid - 2, y: mid }
+      { x: midX, y: midY },
+      { x: midX, y: midY + 1 },
+      { x: midX, y: midY + 2 }
     ];
-    this.direction = { x: 1, y: 0 };
-    this.nextDirection = { x: 1, y: 0 };
+    this.direction = { x: 0, y: -1 };
+    this.nextDirection = { x: 0, y: -1 };
 
     this.spawnFood();
     this.isRunning = true;
     this.lastTime = performance.now();
     this.accumulatedTime = 0;
 
-    this.resize();
     cancelAnimationFrame(this.animationFrameId);
     this.loop(this.lastTime);
   }
@@ -132,8 +141,8 @@ export class SnakeGame {
 
   spawnFood() {
     const emptyTiles = [];
-    for (let x = 0; x < this.gridSize; x++) {
-      for (let y = 0; y < this.gridSize; y++) {
+    for (let x = 0; x < this.gridCols; x++) {
+      for (let y = 0; y < this.gridRows; y++) {
         if (!this.snake.some(seg => seg.x === x && seg.y === y)) {
           emptyTiles.push({ x, y });
         }
@@ -173,7 +182,7 @@ export class SnakeGame {
       y: this.snake[0].y + this.direction.y
     };
 
-    if (head.x < 0 || head.x >= this.gridSize || head.y < 0 || head.y >= this.gridSize) {
+    if (head.x < 0 || head.x >= this.gridCols || head.y < 0 || head.y >= this.gridRows) {
       this.gameOver();
       return;
     }
@@ -189,7 +198,7 @@ export class SnakeGame {
       this.score += 10;
       this.updateScoreUI();
       sound.playEat();
-      if (this.speed > 70) this.speed -= 2;
+      if (this.speed > 65) this.speed -= 2;
       this.spawnFood();
     } else {
       this.snake.pop();
@@ -213,16 +222,17 @@ export class SnakeGame {
   }
 
   render() {
-    const size = this.canvas.width / (window.devicePixelRatio || 1);
+    const w = this.gridCols * this.tileSize;
+    const h = this.gridRows * this.tileSize;
     const ts = this.tileSize;
 
     // Clear background
     this.ctx.fillStyle = '#162235';
-    this.ctx.fillRect(0, 0, size, size);
+    this.ctx.fillRect(0, 0, w, h);
 
-    // 1. Draw Checkered Grid
-    for (let x = 0; x < this.gridSize; x++) {
-      for (let y = 0; y < this.gridSize; y++) {
+    // 1. Draw Checkered Rectangular Grid (Full Screen Coverage)
+    for (let x = 0; x < this.gridCols; x++) {
+      for (let y = 0; y < this.gridRows; y++) {
         const isGreen = (x + y) % 2 === 0;
         this.ctx.fillStyle = isGreen ? '#7eb356' : '#b0b8bc';
         this.ctx.fillRect(x * ts, y * ts, ts, ts);
