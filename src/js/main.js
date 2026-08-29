@@ -11,7 +11,7 @@ import { MinesweeperGame } from './games/minesweeper.js';
 
 class App {
   constructor() {
-    this.currentScreen = 'calculator'; // Default starts as Disguised Calculator
+    this.currentScreen = 'calculator';
     this.activeGameInstance = null;
     this.games = {};
     this.calculator = null;
@@ -25,14 +25,12 @@ class App {
     this.initGames();
     this.initHighScoreModal();
 
-    // Resize listener
     window.addEventListener('resize', () => {
       if (this.activeGameInstance && typeof this.activeGameInstance.resize === 'function') {
         this.activeGameInstance.resize();
       }
     });
 
-    // Android back button handling
     window.addEventListener('popstate', (e) => {
       if (this.currentScreen !== 'calculator' && this.currentScreen !== 'home') {
         this.navigateTo('home');
@@ -54,7 +52,6 @@ class App {
   }
 
   lockToCalculator() {
-    // Stop running games
     if (this.activeGameInstance && typeof this.activeGameInstance.stop === 'function') {
       this.activeGameInstance.stop();
       this.activeGameInstance = null;
@@ -80,37 +77,31 @@ class App {
   }
 
   initGames() {
-    // 1. Snake
     const snakeCanvas = document.getElementById('snake-canvas');
     if (snakeCanvas) {
       this.games.snake = new SnakeGame(snakeCanvas, () => this.navigateTo('home'));
     }
 
-    // 2. Block Blast
     const blockblastCanvas = document.getElementById('blockblast-canvas');
     if (blockblastCanvas) {
       this.games.blockblast = new BlockBlastGame(blockblastCanvas, () => this.navigateTo('home'));
     }
 
-    // 3. Tetris
     const tetrisCanvas = document.getElementById('tetris-canvas');
     if (tetrisCanvas) {
       this.games.tetris = new TetrisGame(tetrisCanvas, () => this.navigateTo('home'));
     }
 
-    // 4. Breakout
     const breakoutCanvas = document.getElementById('breakout-canvas');
     if (breakoutCanvas) {
       this.games.breakout = new BreakoutGame(breakoutCanvas, () => this.navigateTo('home'));
     }
 
-    // 5. Dino
     const dinoCanvas = document.getElementById('dino-canvas');
     if (dinoCanvas) {
       this.games.dino = new DinoGame(dinoCanvas, () => this.navigateTo('home'));
     }
 
-    // 6. Minesweeper
     const minesweeperCanvas = document.getElementById('minesweeper-canvas');
     if (minesweeperCanvas) {
       this.games.minesweeper = new MinesweeperGame(minesweeperCanvas, () => this.navigateTo('home'));
@@ -118,14 +109,12 @@ class App {
   }
 
   initNavigation() {
-    // Arcade Home: Exit button to lock back to Calculator
     const btnArcadeExit = document.getElementById('btn-arcade-exit');
     btnArcadeExit?.addEventListener('click', () => {
       sound.playClick();
       this.lockToCalculator();
     });
 
-    // Home screen game tiles
     document.querySelectorAll('.game-card').forEach(card => {
       card.addEventListener('click', () => {
         const gameKey = card.getAttribute('data-game');
@@ -136,7 +125,6 @@ class App {
       });
     });
 
-    // Top Bar Home buttons in all games
     document.querySelectorAll('.btn-header-home').forEach(btn => {
       btn.addEventListener('click', () => {
         sound.playClick();
@@ -146,7 +134,6 @@ class App {
   }
 
   navigateTo(screenId) {
-    // Stop any running game
     if (this.activeGameInstance && typeof this.activeGameInstance.stop === 'function') {
       this.activeGameInstance.stop();
       this.activeGameInstance = null;
@@ -154,25 +141,29 @@ class App {
 
     modal.hide();
 
-    // Hide all screens
     document.querySelectorAll('.screen-view').forEach(el => {
       el.classList.add('hidden');
     });
 
-    // Show target screen
     const targetEl = document.getElementById(`screen-${screenId}`);
     if (targetEl) {
       targetEl.classList.remove('hidden');
       this.currentScreen = screenId;
     }
 
-    // Start selected game
     if (this.games[screenId]) {
       this.activeGameInstance = this.games[screenId];
       history.pushState({ screen: screenId }, '', `#${screenId}`);
-      setTimeout(() => {
-        this.activeGameInstance.start();
-      }, 50);
+
+      // Double frame check to ensure layout measurements are 100% computed
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (this.activeGameInstance) {
+            this.activeGameInstance.resize();
+            this.activeGameInstance.start();
+          }
+        });
+      });
     }
   }
 

@@ -8,8 +8,8 @@ export class SnakeGame {
     this.ctx = canvas.getContext('2d');
     this.onReturnHome = onReturnHome;
 
-    this.gridCols = 15; // Dynamic rectangular grid
-    this.gridRows = 20;
+    this.gridCols = 14;
+    this.gridRows = 22;
     this.tileSize = 0;
 
     this.snake = [];
@@ -83,16 +83,17 @@ export class SnakeGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Full rectangular width and height
-    const availW = parent.clientWidth || 360;
-    const availH = parent.clientHeight || 480;
+    // Use actual rendered bounding rectangle
+    const rect = parent.getBoundingClientRect();
+    const availW = rect.width > 50 ? rect.width : (window.innerWidth || 360);
+    const availH = rect.height > 50 ? rect.height : (window.innerHeight - 170);
 
-    this.gridCols = 15;
-    this.tileSize = Math.floor(availW / this.gridCols);
-    this.gridRows = Math.floor(availH / this.tileSize);
+    this.gridCols = 14;
+    this.tileSize = availW / this.gridCols;
+    this.gridRows = Math.max(16, Math.floor(availH / this.tileSize));
 
-    const canvasW = this.gridCols * this.tileSize;
-    const canvasH = this.gridRows * this.tileSize;
+    const canvasW = Math.floor(this.gridCols * this.tileSize);
+    const canvasH = Math.floor(this.gridRows * this.tileSize);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = canvasW * dpr;

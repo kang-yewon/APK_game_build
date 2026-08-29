@@ -3,9 +3,9 @@ import { getHighScore, saveHighScore, gameTitles } from '../storage.js';
 import { modal } from '../modal.js';
 
 const DIFFICULTIES = {
-  1: { name: '1단계 (쉬움)', cols: 8, rows: 12, mines: 12 },
-  2: { name: '2단계 (보통)', cols: 10, rows: 15, mines: 25 },
-  3: { name: '3단계 (어려움)', cols: 12, rows: 18, mines: 40 }
+  1: { name: '1단계 (쉬움)', cols: 8, rows: 13, mines: 12 },
+  2: { name: '2단계 (보통)', cols: 10, rows: 16, mines: 26 },
+  3: { name: '3단계 (어려움)', cols: 12, rows: 19, mines: 42 }
 };
 
 export class MinesweeperGame {
@@ -16,7 +16,7 @@ export class MinesweeperGame {
 
     this.currentLevel = 1;
     this.cols = 8;
-    this.rows = 12;
+    this.rows = 13;
     this.totalMines = 12;
     this.placedFlags = 0;
 
@@ -174,10 +174,11 @@ export class MinesweeperGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Fill available rectangular area
-    const availW = parent.clientWidth || 360;
-    const availH = (parent.clientHeight - 24) || 480;
+    const rect = parent.getBoundingClientRect();
+    const availW = rect.width > 50 ? rect.width : (window.innerWidth || 360);
+    const availH = rect.height > 50 ? rect.height : (window.innerHeight - 120);
 
+    // Calculate maximum cell size that fits both availW and availH
     this.cellSize = Math.floor(Math.min(availW / this.cols, availH / this.rows));
     this.boardSizeW = this.cols * this.cellSize;
     this.boardSizeH = this.rows * this.cellSize;
