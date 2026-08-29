@@ -17,7 +17,7 @@ export class SnakeGame {
     this.food = { x: 0, y: 0 };
     this.score = 0;
     this.highScore = getHighScore('snake');
-    this.speed = 140; // ms per step
+    this.speed = 135; // ms per step
     this.lastTime = 0;
     this.accumulatedTime = 0;
 
@@ -35,7 +35,6 @@ export class SnakeGame {
     const btnRight = document.getElementById('snake-btn-right');
 
     const handleInput = (newDir) => {
-      // Prevent 180 degree instant reversal
       if (newDir.x !== -this.direction.x && newDir.y !== -this.direction.y) {
         this.nextDirection = newDir;
         sound.playClick();
@@ -86,7 +85,8 @@ export class SnakeGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const size = Math.min(parent.clientWidth - 16, parent.clientHeight - 16, 420);
+    // Maximize canvas size to fill available space
+    const size = Math.min(parent.clientWidth - 8, parent.clientHeight - 8, 480);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = size * dpr;
@@ -193,7 +193,6 @@ export class SnakeGame {
       this.score += 10;
       this.updateScoreUI();
       sound.playEat();
-      // Increase speed slightly
       if (this.speed > 70) this.speed -= 2;
       this.spawnFood();
     } else {
@@ -239,19 +238,16 @@ export class SnakeGame {
     const fy = this.food.y * ts + ts / 2;
     const r = ts * 0.4;
 
-    // Apple body
     this.ctx.fillStyle = '#e52521';
     this.ctx.beginPath();
     this.ctx.arc(fx, fy + 1, r, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Apple highlight
     this.ctx.fillStyle = '#ff7b7b';
     this.ctx.beginPath();
     this.ctx.arc(fx - r * 0.3, fy - r * 0.3, r * 0.28, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Apple stem & Leaf
     this.ctx.fillStyle = '#5c3317';
     this.ctx.fillRect(fx - 1, fy - r - 3, 2, 4);
 
@@ -271,11 +267,9 @@ export class SnakeGame {
         this.ctx.fillStyle = '#226b2a';
         this.ctx.fillRect(px + pad, py + pad, ts - pad * 2, ts - pad * 2);
 
-        // Head inner
         this.ctx.fillStyle = '#399342';
         this.ctx.fillRect(px + pad + 2, py + pad + 2, ts - pad * 2 - 4, ts - pad * 2 - 4);
 
-        // Eyes
         const eyeOffset = ts * 0.25;
         const eyeSize = Math.max(3, ts * 0.16);
 
@@ -295,14 +289,12 @@ export class SnakeGame {
           eyeX2 = px + ts - eyeOffset; eyeY2 = py + ts - eyeOffset;
         }
 
-        // White of eye
         this.ctx.fillStyle = '#ffffff';
         this.ctx.beginPath();
         this.ctx.arc(eyeX1, eyeY1, eyeSize, 0, Math.PI * 2);
         this.ctx.arc(eyeX2, eyeY2, eyeSize, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // Pupil
         this.ctx.fillStyle = '#000000';
         this.ctx.beginPath();
         this.ctx.arc(eyeX1, eyeY1, eyeSize * 0.5, 0, Math.PI * 2);
@@ -310,7 +302,6 @@ export class SnakeGame {
         this.ctx.fill();
 
       } else {
-        // Body / Tail
         const isTail = i === this.snake.length - 1;
         this.ctx.fillStyle = '#26732f';
         this.ctx.fillRect(px + pad, py + pad, ts - pad * 2, ts - pad * 2);
@@ -318,7 +309,6 @@ export class SnakeGame {
         this.ctx.fillStyle = '#3ea048';
         this.ctx.fillRect(px + pad + 2, py + pad + 2, ts - pad * 2 - 4, ts - pad * 2 - 4);
 
-        // Pattern on body
         if (i % 2 === 0 && !isTail) {
           this.ctx.fillStyle = '#5ac265';
           this.ctx.fillRect(px + ts * 0.35, py + ts * 0.35, ts * 0.3, ts * 0.3);

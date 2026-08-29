@@ -3,19 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Arcade Fun - 6 Classic Retro Games</title>
+  <title>계산기</title>
   <link rel="stylesheet" href="./src/css/style.css" />
 </head>
 <body>
   <div id="app">
 
     <!-- =========================================
-         1. HOME SCREEN
+         0. CALCULATOR SCREEN (DISGUISE)
          ========================================= -->
-    <div id="screen-home" class="screen-view">
+    <div id="screen-calculator" class="screen-view">
+      <header class="calc-header">
+        <button id="calc-btn-settings" class="calc-gear-btn" title="설정">⚙️</button>
+        <div style="font-size: 1rem; color: #64748b; font-weight: 500;">계산기</div>
+        <div style="width: 32px;"></div>
+      </header>
+
+      <div class="calc-display-area">
+        <div id="calc-display-history" class="calc-history"></div>
+        <div id="calc-display-current" class="calc-current">0</div>
+      </div>
+
+      <div class="calc-keypad">
+        <button class="calc-btn calc-btn-func" data-action="clear">C</button>
+        <button class="calc-btn calc-btn-func" data-val="(">(</button>
+        <button class="calc-btn calc-btn-func" data-val=")">)</button>
+        <button class="calc-btn calc-btn-op" data-val="÷">÷</button>
+
+        <button class="calc-btn calc-btn-num" data-val="7">7</button>
+        <button class="calc-btn calc-btn-num" data-val="8">8</button>
+        <button class="calc-btn calc-btn-num" data-val="9">9</button>
+        <button class="calc-btn calc-btn-op" data-val="×">×</button>
+
+        <button class="calc-btn calc-btn-num" data-val="4">4</button>
+        <button class="calc-btn calc-btn-num" data-val="5">5</button>
+        <button class="calc-btn calc-btn-num" data-val="6">6</button>
+        <button class="calc-btn calc-btn-op" data-val="-">-</button>
+
+        <button class="calc-btn calc-btn-num" data-val="1">1</button>
+        <button class="calc-btn calc-btn-num" data-val="2">2</button>
+        <button class="calc-btn calc-btn-num" data-val="3">3</button>
+        <button class="calc-btn calc-btn-op" data-val="+">+</button>
+
+        <button class="calc-btn calc-btn-func" data-val="%">%</button>
+        <button class="calc-btn calc-btn-num" data-val="0">0</button>
+        <button class="calc-btn calc-btn-num" data-val=".">.</button>
+        <button class="calc-btn calc-btn-op" data-action="equals" style="background: #10b981;">=</button>
+
+        <!-- Extra row for Backspace -->
+        <button class="calc-btn calc-btn-func" data-action="backspace" style="grid-column: span 4; height: 48px; font-size: 1.1rem; color: #94a3b8; background: #232730;">
+          ⌫ 백스페이스
+        </button>
+      </div>
+    </div>
+
+    <!-- =========================================
+         CALCULATOR SETTINGS MODAL
+         ========================================= -->
+    <div id="calc-settings-modal" class="modal-overlay hidden">
+      <div class="modal-box" style="border-color: #38bdf8;">
+        
+        <!-- View 1: Main Settings Menu -->
+        <div id="settings-view-main">
+          <div class="modal-game-title" style="color: #38bdf8; margin-bottom: 10px;">⚙️ 계산기 설정</div>
+          
+          <div class="settings-menu-list">
+            <button id="settings-opt-appinfo" class="btn-settings-item">
+              <span>📱 앱 정보</span>
+              <span>›</span>
+            </button>
+            <button id="settings-opt-feedback" class="btn-settings-item">
+              <span>💬 피드백 보내기</span>
+              <span>›</span>
+            </button>
+            <button id="settings-opt-thanks" class="btn-settings-item">
+              <span>🙏 감사의 말</span>
+              <span>›</span>
+            </button>
+            <button id="settings-opt-premium" class="btn-settings-item">
+              <span>💎 프리미엄으로 업데이트</span>
+              <span>›</span>
+            </button>
+          </div>
+
+          <button id="btn-close-calc-settings" class="btn-modal-action btn-modal-home" style="width: 100%; margin-top: 10px;">
+            닫기
+          </button>
+        </div>
+
+        <!-- View 2: App Info -->
+        <div id="settings-view-appinfo" class="hidden">
+          <div class="modal-game-title" style="color: #38bdf8;">📱 앱 정보</div>
+          <div class="settings-subview">
+            <p><strong>앱 버전:</strong> v1.0.0</p>
+            <p><strong>설명:</strong> 일상 생활에서 빠르고 정확한 사칙연산과 백분율, 괄호 계산을 제공하는 깔끔하고 직관적인 스마트 계산기입니다.</p>
+            <p><strong>개발자 정보:</strong> <a href="mailto:opal111024@naver.com" style="color: #38bdf8; text-decoration: none;">opal111024@naver.com</a></p>
+          </div>
+          <button class="btn-modal-action btn-modal-home btn-back-settings-main" style="width: 100%; margin-top: 10px;">
+            뒤로가기
+          </button>
+        </div>
+
+        <!-- View 3: Feedback (Secret PIN Change) -->
+        <div id="settings-view-feedback" class="hidden">
+          <div class="modal-game-title" style="color: #38bdf8;">💬 피드백 보내기</div>
+          <div class="settings-subview">
+            <div id="feedback-step-title" style="font-weight: 700; color: #ffffff; text-align: center;">
+              1단계: 기존 비밀번호를 입력하세요
+            </div>
+            <input id="input-pin-step" type="password" maxlength="4" class="input-secret-pin" placeholder="4자리 기존 비밀번호" />
+            <div id="feedback-step-error" class="feedback-error"></div>
+            <button id="btn-pin-submit" class="btn-modal-action btn-modal-restart" style="width: 100%;">
+              확인
+            </button>
+          </div>
+          <button class="btn-modal-action btn-modal-home btn-back-settings-main" style="width: 100%; margin-top: 10px;">
+            취소
+          </button>
+        </div>
+
+        <!-- View 4: Thanks -->
+        <div id="settings-view-thanks" class="hidden">
+          <div class="modal-game-title" style="color: #38bdf8;">🙏 감사의 말</div>
+          <div class="settings-subview">
+            <p>본 계산기 앱을 이용해 주시는 모든 사용자 여러분과 소중한 피드백을 전달해 주신 분들께 깊은 감사를 표합니다.</p>
+            <p>언제나 더 나은 경험과 편리함을 제공하기 위해 최선을 다하겠습니다.</p>
+          </div>
+          <button class="btn-modal-action btn-modal-home btn-back-settings-main" style="width: 100%; margin-top: 10px;">
+            뒤로가기
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- =========================================
+         1. ARCADE HOME SCREEN (SECRET)
+         ========================================= -->
+    <div id="screen-home" class="screen-view hidden">
       <header class="app-header">
         <h1 class="app-title">ARCADE FUN</h1>
-        <button id="btn-sound-toggle" class="header-icon-btn" title="사운드 온/오프">🔊</button>
+        <div class="header-right-actions">
+          <button id="btn-sound-toggle" class="header-icon-btn" title="사운드 온/오프">🔊</button>
+          <button id="btn-arcade-exit" class="btn-exit-app" title="계산기로 돌아가기">
+            🔒 나가기
+          </button>
+        </div>
       </header>
 
       <div class="home-container">
@@ -164,7 +297,7 @@
       </header>
 
       <div class="game-canvas-area">
-        <div class="canvas-frame">
+        <div class="canvas-frame" style="height: 100%; width: 96%; max-width: 420px;">
           <canvas id="breakout-canvas"></canvas>
         </div>
       </div>
@@ -228,8 +361,30 @@
 
       <div class="minesweeper-bottom-bar">
         <button id="minesweeper-btn-restart" class="btn-restart-game">
-          🔄 재시작
+          🔄 난이도 / 재시작
         </button>
+      </div>
+    </div>
+
+    <!-- =========================================
+         MINESWEEPER DIFFICULTY SELECTION MODAL
+         ========================================= -->
+    <div id="minesweeper-difficulty-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-game-title">💣 지뢰찾기 난이도 선택</div>
+        <div style="font-size: 0.9rem; color: #94a3b8;">도전할 난이도를 선택하세요</div>
+
+        <div class="diff-buttons-list">
+          <button class="btn-minesweeper-diff btn-diff-1" data-level="1">
+            🌱 1단계 (쉬움 - 8×8 / 지뢰 10개)
+          </button>
+          <button class="btn-minesweeper-diff btn-diff-2" data-level="2">
+            ⚡ 2단계 (보통 - 10×10 / 지뢰 18개)
+          </button>
+          <button class="btn-minesweeper-diff btn-diff-3" data-level="3">
+            🔥 3단계 (어려움 - 12×12 / 지뢰 30개)
+          </button>
+        </div>
       </div>
     </div>
 

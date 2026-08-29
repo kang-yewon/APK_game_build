@@ -2,18 +2,25 @@ import { sound } from '../sound.js';
 import { getHighScore, saveHighScore, gameTitles } from '../storage.js';
 import { modal } from '../modal.js';
 
+const DIFFICULTIES = {
+  1: { name: '1단계 (쉬움)', rows: 8, cols: 8, mines: 10 },
+  2: { name: '2단계 (보통)', rows: 10, cols: 10, mines: 18 },
+  3: { name: '3단계 (어려움)', rows: 12, cols: 12, mines: 30 }
+};
+
 export class MinesweeperGame {
   constructor(canvas, onReturnHome) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.onReturnHome = onReturnHome;
 
-    this.rows = 9;
-    this.cols = 9;
+    this.currentLevel = 1;
+    this.rows = 8;
+    this.cols = 8;
     this.totalMines = 10;
     this.placedFlags = 0;
 
-    this.board = []; // 2D array of cell objects
+    this.board = [];
     this.firstClick = true;
     this.isGameOver = false;
     this.isVictory = false;
@@ -34,10 +41,23 @@ export class MinesweeperGame {
     this.touchStartPos = null;
     this.touchCell = null;
     this.isLongPressTriggered = false;
-    this.longPressThresholdMs = 320; // 320ms is optimal for mobile long-press
+    this.longPressThresholdMs = 320;
 
     this.isRunning = false;
     this.initControls();
+    this.initDifficultyModal();
+  }
+
+  initDifficultyModal() {
+    const modalDiff = document.getElementById('minesweeper-difficulty-modal');
+    document.querySelectorAll('.btn-minesweeper-diff').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const level = parseInt(btn.getAttribute('data-level'), 10) || 1;
+        sound.playClick();
+        modalDiff?.classList.add('hidden');
+        this.setDifficultyAndStart(level);
+      });
+    });
   }
 
   initControls() {
@@ -45,10 +65,9 @@ export class MinesweeperGame {
     const btnRestart = document.getElementById('minesweeper-btn-restart');
     btnRestart?.addEventListener('click', () => {
       sound.playClick();
-      this.start();
+      this.promptDifficulty();
     });
 
-    // Touch / Pointer handling on canvas
     const getPos = (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -78,7 +97,6 @@ export class MinesweeperGame {
       this.touchCell = cell;
       this.isLongPressTriggered = false;
 
-      // Clear any previous timer
       if (this.longPressTimer) clearTimeout(this.longPressTimer);
 
       // Start Long Press Timer (320ms)
@@ -91,7 +109,6 @@ export class MinesweeperGame {
         }
       }, this.longPressThresholdMs);
 
-      // Prevent default scrolling on canvas touch
       if (e.cancelable) e.preventDefault();
     };
 
@@ -121,7 +138,6 @@ export class MinesweeperGame {
         return;
       }
 
-      // If long press was already executed, do not trigger tap
       if (!this.isLongPressTriggered) {
         this.revealTile(this.touchCell.r, this.touchCell.c);
       }
@@ -131,7 +147,6 @@ export class MinesweeperGame {
       this.isLongPressTriggered = false;
     };
 
-    // Canvas listeners
     this.canvas.addEventListener('touchstart', onPointerDown, { passive: false });
     this.canvas.addEventListener('touchmove', onPointerMove, { passive: false });
     this.canvas.addEventListener('touchend', onPointerUp, { passive: false });
@@ -142,7 +157,6 @@ export class MinesweeperGame {
 
     this.canvas.addEventListener('mousedown', (e) => {
       if (e.button === 2) {
-        // Right Click: Instant Flag toggle for desktop
         e.preventDefault();
         const pos = getPos(e);
         const cell = getCell(pos);
@@ -164,7 +178,8 @@ export class MinesweeperGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const size = Math.min(parent.clientWidth - 16, parent.clientHeight - 16, 420);
+    // Maximize canvas size to fill available space
+    const size = Math.min(parent.clientWidth - 8, parent.clientHeight - 8, 480);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = size * dpr;
@@ -175,7 +190,7 @@ export class MinesweeperGame {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
-    this.boardSize = size * 0.94;
+    this.boardSize = size * 0.96;
     this.boardX = (size - this.boardSize) / 2;
     this.boardY = (size - this.boardSize) / 2;
     this.cellSize = this.boardSize / this.cols;
@@ -184,6 +199,23 @@ export class MinesweeperGame {
   }
 
   start() {
+    // Show difficulty selection modal before game starts
+    this.promptDifficulty();
+  }
+
+  promptDifficulty() {
+    this.stop();
+    const modalDiff = document.getElementById('minesweeper-difficulty-modal');
+    modalDiff?.classList.remove('hidden');
+  }
+
+  setDifficultyAndStart(level = 1) {
+    this.currentLevel = level;
+    const conf = DIFFICULTIES[level] || DIFFICULTIES[1];
+    this.rows = conf.rows;
+    this.cols = conf.cols;
+    this.totalMines = conf.mines;
+
     if (this.timerInterval) clearInterval(this.timerInterval);
     if (this.longPressTimer) clearTimeout(this.longPressTimer);
 
@@ -235,7 +267,7 @@ export class MinesweeperGame {
       const r = Math.floor(Math.random() * this.rows);
       const c = Math.floor(Math.random() * this.cols);
 
-      // Guarantee safe 3x3 region around first click
+      // Safe 3x3 region around first click
       const isAroundSafe = Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1;
 
       if (!this.board[r][c].isMine && !isAroundSafe) {
@@ -286,7 +318,6 @@ export class MinesweeperGame {
     }
 
     if (cell.isMine) {
-      // Game Over: Mine Exploded
       cell.isRevealed = true;
       cell.isExploded = true;
       this.gameOver(false);
@@ -297,7 +328,6 @@ export class MinesweeperGame {
     this.cascadeReveal(r, c);
     this.render();
 
-    // Check Victory
     this.checkVictory();
   }
 
@@ -309,9 +339,8 @@ export class MinesweeperGame {
       const [r, c] = queue.shift();
       const cell = this.board[r][c];
       cell.isRevealed = true;
-      cell.isFlagged = false; // Remove flag if auto-revealed
+      cell.isFlagged = false;
 
-      // If cell has 0 neighboring mines, cascade open all 8 neighbors
       if (cell.neighborCount === 0) {
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
@@ -355,20 +384,19 @@ export class MinesweeperGame {
 
       this.render();
       modal.show({
-        gameTitle: gameTitles.minesweeper,
+        gameTitle: `${gameTitles.minesweeper} (${DIFFICULTIES[this.currentLevel].name})`,
         score: this.elapsedSeconds,
         highScore: highScore,
         isNewHigh,
         isVictory: true,
         isTimeScore: true,
-        onRestart: () => this.start(),
+        onRestart: () => this.promptDifficulty(),
         onHome: () => this.onReturnHome()
       });
     } else {
       this.isGameOver = true;
       sound.playExplode();
 
-      // Reveal all mines
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
           if (this.board[r][c].isMine) {
@@ -379,13 +407,13 @@ export class MinesweeperGame {
       this.render();
 
       modal.show({
-        gameTitle: gameTitles.minesweeper,
+        gameTitle: `${gameTitles.minesweeper} (${DIFFICULTIES[this.currentLevel].name})`,
         score: this.elapsedSeconds,
         highScore: getHighScore('minesweeper'),
         isNewHigh: false,
         isVictory: false,
         isTimeScore: true,
-        onRestart: () => this.start(),
+        onRestart: () => this.promptDifficulty(),
         onHome: () => this.onReturnHome()
       });
     }
@@ -415,7 +443,6 @@ export class MinesweeperGame {
     this.ctx.fillStyle = '#334155';
     this.ctx.fillRect(this.boardX - 4, this.boardY - 4, this.boardSize + 8, this.boardSize + 8);
 
-    // Render cells
     const NUMBER_COLORS = [
       '',
       '#3b82f6', // 1: Blue
@@ -437,21 +464,18 @@ export class MinesweeperGame {
 
         if (cell.isRevealed) {
           if (cell.isMine) {
-            // Mine cell
             this.ctx.fillStyle = cell.isExploded ? '#ef4444' : '#1e293b';
             this.ctx.fillRect(x, y, s, s);
             this.ctx.strokeStyle = '#475569';
             this.ctx.strokeRect(x, y, s, s);
 
-            // Mine icon
             this.ctx.fillStyle = '#000000';
-            this.ctx.font = `${Math.floor(s * 0.55)}px sans-serif`;
+            this.ctx.font = `${Math.floor(s * 0.58)}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('💣', x + s / 2, y + s / 2 + 1);
 
           } else {
-            // Empty revealed cell
             this.ctx.fillStyle = '#e2e8f0';
             this.ctx.fillRect(x, y, s, s);
             this.ctx.strokeStyle = '#cbd5e1';
@@ -459,7 +483,7 @@ export class MinesweeperGame {
 
             if (cell.neighborCount > 0) {
               this.ctx.fillStyle = NUMBER_COLORS[cell.neighborCount] || '#000000';
-              this.ctx.font = `bold ${Math.floor(s * 0.55)}px monospace`;
+              this.ctx.font = `bold ${Math.floor(s * 0.58)}px monospace`;
               this.ctx.textAlign = 'center';
               this.ctx.textBaseline = 'middle';
               this.ctx.fillText(cell.neighborCount, x + s / 2, y + s / 2 + 1);
@@ -470,19 +494,16 @@ export class MinesweeperGame {
           this.ctx.fillStyle = '#94a3b8';
           this.ctx.fillRect(x, y, s, s);
 
-          // Top/Left highlight
           this.ctx.fillStyle = '#f1f5f9';
           this.ctx.fillRect(x, y, s, 3);
           this.ctx.fillRect(x, y, 3, s);
 
-          // Bottom/Right shadow
           this.ctx.fillStyle = '#475569';
           this.ctx.fillRect(x, y + s - 3, s, 3);
-          this.ctx.fillRect(x + s - 3, y, 3, s);
+          this.ctx.fillRect(x + sizeTileEdge(s), y, 3, s);
 
-          // Flag
           if (cell.isFlagged) {
-            this.ctx.font = `${Math.floor(s * 0.55)}px sans-serif`;
+            this.ctx.font = `${Math.floor(s * 0.58)}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('🚩', x + s / 2, y + s / 2 + 1);
@@ -491,4 +512,8 @@ export class MinesweeperGame {
       }
     }
   }
+}
+
+function sizeTileEdge(s) {
+  return s - 3;
 }

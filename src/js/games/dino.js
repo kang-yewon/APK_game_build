@@ -10,8 +10,10 @@ export class DinoGame {
 
     this.score = 0;
     this.highScore = getHighScore('dino');
-    this.speed = 6;
+    this.speed = 5.0; // Starts easier
     this.distance = 0;
+    this.gameStartTime = 0;
+    this.obstacleDelayMs = 4000; // 4 seconds delay before any obstacle spawns
 
     // Dino Physics & State
     this.dino = {
@@ -111,8 +113,9 @@ export class DinoGame {
     this.highScore = getHighScore('dino');
     this.score = 0;
     this.distance = 0;
-    this.speed = 6.5;
+    this.speed = 5.0; // Easier initial speed
     this.isNightMode = false;
+    this.gameStartTime = performance.now();
     this.updateUI();
 
     this.dino.vy = 0;
@@ -126,7 +129,7 @@ export class DinoGame {
       { x: 320, y: 55, speed: 0.6 },
       { x: 520, y: 25, speed: 0.9 }
     ];
-    this.nextObstacleDistance = 100;
+    this.nextObstacleDistance = 140;
 
     this.isRunning = true;
     this.resize();
@@ -156,6 +159,7 @@ export class DinoGame {
 
   update() {
     const w = this.canvas.width / (window.devicePixelRatio || 1);
+    const timeSinceStart = performance.now() - this.gameStartTime;
 
     // Score & Speed
     this.distance += this.speed;
@@ -171,8 +175,8 @@ export class DinoGame {
     // Day/Night switch every 500 points
     this.isNightMode = Math.floor(curScore / 500) % 2 === 1;
 
-    // Speed scaling
-    this.speed = Math.min(13, 6.5 + Math.floor(curScore / 100) * 0.4);
+    // Gradual speed scaling starting from 5.0 up to 13.0
+    this.speed = Math.min(13.0, 5.0 + Math.floor(curScore / 80) * 0.35);
     this.updateUI();
 
     // Dino Physics
@@ -202,11 +206,13 @@ export class DinoGame {
       }
     });
 
-    // Spawn Obstacles
-    this.nextObstacleDistance -= this.speed;
-    if (this.nextObstacleDistance <= 0) {
-      this.spawnObstacle(w);
-      this.nextObstacleDistance = Math.random() * 200 + 160 + (10 - this.speed) * 10;
+    // Spawn Obstacles ONLY AFTER 4 seconds delay
+    if (timeSinceStart >= this.obstacleDelayMs) {
+      this.nextObstacleDistance -= this.speed;
+      if (this.nextObstacleDistance <= 0) {
+        this.spawnObstacle(w);
+        this.nextObstacleDistance = Math.random() * 220 + 170 + (12 - this.speed) * 12;
+      }
     }
 
     // Move Obstacles & Collision Check
@@ -236,7 +242,7 @@ export class DinoGame {
   }
 
   spawnObstacle(canvasWidth) {
-    const isBird = this.score > 300 && Math.random() < 0.3;
+    const isBird = this.score > 350 && Math.random() < 0.3;
 
     if (isBird) {
       const birdYVariants = [this.groundY - 30, this.groundY - 55, this.groundY - 75];
@@ -386,28 +392,20 @@ export class DinoGame {
 
   drawCactus(obs, color) {
     this.ctx.fillStyle = color;
-    // Main stem
     this.ctx.fillRect(obs.x + obs.w * 0.35, obs.y, obs.w * 0.3, obs.h);
-    // Arms
     this.ctx.fillRect(obs.x, obs.y + obs.h * 0.3, obs.w * 0.35, 6);
     this.ctx.fillRect(obs.x, obs.y + obs.h * 0.15, 6, obs.h * 0.2);
-
     this.ctx.fillRect(obs.x + obs.w * 0.65, obs.y + obs.h * 0.45, obs.w * 0.35, 6);
     this.ctx.fillRect(obs.x + obs.w - 6, obs.y + obs.h * 0.3, 6, obs.h * 0.2);
   }
 
   drawBird(obs, color) {
     this.ctx.fillStyle = color;
-    // Pterodactyl body
     this.ctx.fillRect(obs.x + 10, obs.y + 8, 20, 8);
-    this.ctx.fillRect(obs.x, obs.y + 10, 10, 4); // Beak
-
-    // Wings
+    this.ctx.fillRect(obs.x, obs.y + 10, 10, 4);
     if (obs.frame === 0) {
-      // Wings Up
       this.ctx.fillRect(obs.x + 14, obs.y, 8, 8);
     } else {
-      // Wings Down
       this.ctx.fillRect(obs.x + 14, obs.y + 16, 8, 8);
     }
   }

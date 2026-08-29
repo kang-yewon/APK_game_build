@@ -14,21 +14,21 @@ export class BreakoutGame {
     this.level = 1;
 
     // Paddle
-    this.paddleWidth = 75;
-    this.paddleHeight = 12;
+    this.paddleWidth = 85;
+    this.paddleHeight = 14;
     this.paddleX = 0;
-    this.paddleSpeed = 8;
+    this.paddleSpeed = 9;
     this.isMovingLeft = false;
     this.isMovingRight = false;
 
     // Ball
-    this.ballRadius = 6;
+    this.ballRadius = 7;
     this.ballX = 0;
     this.ballY = 0;
     this.ballSpeedX = 0;
     this.ballSpeedY = 0;
-    this.ballSpeedBase = 5;
-    this.ballAttached = true; // Attached to paddle before launch
+    this.ballSpeedBase = 5.5;
+    this.ballAttached = true;
 
     // Bricks
     this.brickRows = 6;
@@ -49,7 +49,7 @@ export class BreakoutGame {
 
   initStars() {
     this.stars = [];
-    for (let i = 0; i < 45; i++) {
+    for (let i = 0; i < 55; i++) {
       this.stars.push({
         x: Math.random(),
         y: Math.random(),
@@ -119,8 +119,9 @@ export class BreakoutGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const width = Math.min(parent.clientWidth - 16, 420);
-    const height = Math.min(parent.clientHeight - 16, 560);
+    // Much taller vertical aspect ratio for comfortable breakout gameplay
+    const width = Math.min(parent.clientWidth - 12, 420);
+    const height = Math.min(parent.clientHeight - 8, 620);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = width * dpr;
@@ -160,10 +161,10 @@ export class BreakoutGame {
   initBricks() {
     const w = this.canvas.width / (window.devicePixelRatio || 1) || 360;
     const padding = 6;
-    const offsetTop = 40;
+    const offsetTop = 45;
     const offsetLeft = 12;
     const brickWidth = (w - offsetLeft * 2 - (this.brickCols - 1) * padding) / this.brickCols;
-    const brickHeight = 16;
+    const brickHeight = 18;
 
     this.bricks = [];
     for (let r = 0; r < this.brickRows; r++) {
@@ -184,7 +185,7 @@ export class BreakoutGame {
 
   resetBall() {
     const w = this.canvas.width / (window.devicePixelRatio || 1) || 360;
-    const h = this.canvas.height / (window.devicePixelRatio || 1) || 500;
+    const h = this.canvas.height / (window.devicePixelRatio || 1) || 540;
 
     this.paddleX = (w - this.paddleWidth) / 2;
     this.ballAttached = true;
@@ -259,7 +260,6 @@ export class BreakoutGame {
       this.ballX <= this.paddleX + this.paddleWidth &&
       this.ballSpeedY > 0
     ) {
-      // Calculate hit point on paddle (-1 left edge to +1 right edge)
       const hitPoint = (this.ballX - (this.paddleX + this.paddleWidth / 2)) / (this.paddleWidth / 2);
       const maxBounceAngle = Math.PI * 0.38; // 68 degrees
       const bounceAngle = hitPoint * maxBounceAngle;
@@ -305,7 +305,6 @@ export class BreakoutGame {
         sound.playBrickHit();
         this.spawnSparks(brick.x + brick.w / 2, brick.y + brick.h / 2, brick.color);
 
-        // Simple axis reflection
         const prevBallX = this.ballX - this.ballSpeedX;
         if (prevBallX < brick.x || prevBallX > brick.x + brick.w) {
           this.ballSpeedX = -this.ballSpeedX;

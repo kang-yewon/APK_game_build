@@ -69,10 +69,7 @@ export class BlockBlastGame {
     this.dragY = 0;
     this.dragOffsetHoverY = -70; // Lift above finger for mobile visibility
 
-    // Tap-to-place selected index
     this.selectedTrayIndex = -1;
-
-    // Particles
     this.particles = [];
 
     this.isRunning = false;
@@ -119,13 +116,17 @@ export class BlockBlastGame {
     };
 
     const onEnd = (e) => {
-      if (!this.isRunning || this.dragIndex === -1) return;
-      const piece = this.trayPieces[this.dragIndex];
+      if (!this.isRunning || this.dragIndex === -1) {
+        this.dragIndex = -1;
+        return;
+      }
+      const pieceIdx = this.dragIndex;
+      const piece = this.trayPieces[pieceIdx];
+
       if (piece) {
         const gridPos = this.getGridCoordForPiece(piece, this.dragX, this.dragY);
         if (gridPos && this.canPlace(piece.matrix, gridPos.r, gridPos.c)) {
-          this.placePiece(piece, gridPos.r, gridPos.c);
-          this.trayPieces[this.dragIndex] = null;
+          this.placePiece(piece, gridPos.r, gridPos.c, pieceIdx);
           this.selectedTrayIndex = -1;
         }
       }
@@ -254,7 +255,7 @@ export class BlockBlastGame {
     return null;
   }
 
-  placePiece(piece, row, col) {
+  placePiece(piece, row, col, traySlotIndex) {
     const rows = piece.matrix.length;
     const cols = piece.matrix[0].length;
     let blockCount = 0;
@@ -268,13 +269,16 @@ export class BlockBlastGame {
       }
     }
 
+    // Mark tray piece as consumed
+    this.trayPieces[traySlotIndex] = null;
     this.score += blockCount * 10;
     sound.playDrop();
 
-    // Check line clears
+    // Check line clears with user requested score rule:
+    // 1 line = 100 points, 2 lines = 250 points, 3 lines = 350 points (N >= 4: 350 + (N-3)*100)
     this.checkLines();
 
-    // If all 3 tray pieces used, spawn 3 new pieces
+    // Refill check: If all 3 tray pieces used, immediately spawn 3 new pieces
     if (this.trayPieces.every(p => p === null)) {
       this.spawnTrayPieces();
     }
@@ -311,9 +315,16 @@ export class BlockBlastGame {
     const totalLines = fullRows.length + fullCols.length;
     if (totalLines > 0) {
       this.combo++;
-      const basePoints = totalLines * 100;
+
+      // Scoring: 1 line = 100, 2 lines = 250, 3 lines = 350
+      let linePoints = 0;
+      if (totalLines === 1) linePoints = 100;
+      else if (totalLines === 2) linePoints = 250;
+      else if (totalLines === 3) linePoints = 350;
+      else linePoints = 350 + (totalLines - 3) * 100;
+
       const comboBonus = this.combo > 1 ? (this.combo * 50) : 0;
-      this.score += basePoints + comboBonus;
+      this.score += linePoints + comboBonus;
 
       sound.playLineClear();
       if (this.combo > 1) {

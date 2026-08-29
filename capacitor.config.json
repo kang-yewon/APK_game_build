@@ -1,12 +1,12 @@
 {
-  "appId": "com.kangyewon.arcadegames",
-  "appName": "Arcade Fun",
+  "appId": "com.kangyewon.calculator",
+  "appName": "계산기",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
   },
   "android": {
-    "backgroundColor": "#0d1626",
+    "backgroundColor": "#17181a",
     "allowMixedContent": true
   }
 }

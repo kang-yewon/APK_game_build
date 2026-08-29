@@ -1,6 +1,7 @@
 import { sound } from './sound.js';
-import { getHighScore, getAllHighScores, gameTitles } from './storage.js';
+import { getAllHighScores, gameTitles } from './storage.js';
 import { modal } from './modal.js';
+import { Calculator } from './calculator.js';
 import { SnakeGame } from './games/snake.js';
 import { BlockBlastGame } from './games/blockblast.js';
 import { TetrisGame } from './games/tetris.js';
@@ -10,13 +11,15 @@ import { MinesweeperGame } from './games/minesweeper.js';
 
 class App {
   constructor() {
-    this.currentScreen = 'home';
+    this.currentScreen = 'calculator'; // Default starts as Disguised Calculator
     this.activeGameInstance = null;
     this.games = {};
+    this.calculator = null;
   }
 
   init() {
     modal.init();
+    this.initCalculator();
     this.initAudioToggle();
     this.initNavigation();
     this.initGames();
@@ -31,10 +34,33 @@ class App {
 
     // Android back button handling
     window.addEventListener('popstate', (e) => {
-      if (this.currentScreen !== 'home') {
+      if (this.currentScreen !== 'calculator' && this.currentScreen !== 'home') {
         this.navigateTo('home');
+      } else if (this.currentScreen === 'home') {
+        this.lockToCalculator();
       }
     });
+  }
+
+  initCalculator() {
+    this.calculator = new Calculator(() => {
+      sound.playVictory();
+      this.unlockArcade();
+    });
+  }
+
+  unlockArcade() {
+    this.navigateTo('home');
+  }
+
+  lockToCalculator() {
+    // Stop running games
+    if (this.activeGameInstance && typeof this.activeGameInstance.stop === 'function') {
+      this.activeGameInstance.stop();
+      this.activeGameInstance = null;
+    }
+    modal.hide();
+    this.navigateTo('calculator');
   }
 
   initAudioToggle() {
@@ -92,6 +118,13 @@ class App {
   }
 
   initNavigation() {
+    // Arcade Home: Exit button to lock back to Calculator
+    const btnArcadeExit = document.getElementById('btn-arcade-exit');
+    btnArcadeExit?.addEventListener('click', () => {
+      sound.playClick();
+      this.lockToCalculator();
+    });
+
     // Home screen game tiles
     document.querySelectorAll('.game-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -136,7 +169,6 @@ class App {
     // Start selected game
     if (this.games[screenId]) {
       this.activeGameInstance = this.games[screenId];
-      // Push history state so Android back button works
       history.pushState({ screen: screenId }, '', `#${screenId}`);
       setTimeout(() => {
         this.activeGameInstance.start();
@@ -177,7 +209,6 @@ class App {
   }
 }
 
-// App Launch
 document.addEventListener('DOMContentLoaded', () => {
   const app = new App();
   app.init();
