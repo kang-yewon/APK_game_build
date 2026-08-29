@@ -25,7 +25,7 @@ jobs:
       - name: Install NPM Dependencies
         run: npm ci || npm install
 
-      - name: Build Web Game Application
+      - name: Build Web Application
         run: npm run build
 
       - name: Setup Java JDK 17
@@ -38,19 +38,15 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Sync Capacitor Android
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
-          npx cap sync android
+        run: npx cap sync android
 
       - name: Make Gradle Executable
         run: chmod +x android/gradlew
 
-      - name: Build Debug APK
+      - name: Build Debug APK with Persistent Signature
         run: |
           cd android
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug -PversionCode=${{ github.run_number }} -PversionName="1.0.${{ github.run_number }}" --stacktrace
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
@@ -65,19 +61,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           files: android/app/build/outputs/apk/debug/app-debug.apk
-          name: Arcade Fun APK Build v${{ github.run_number }}
+          name: 계산기 APK 빌드 v${{ github.run_number }}
           tag_name: v1.0.${{ github.run_number }}
           body: |
-            ## 🎮 Arcade Fun APK Released!
-            
-            포함된 6가지 고전 아케이드 게임:
-            - 🐍 **스네이크 게임 (Snake Game)**
-            - 🧱 **테트리스 (Tetris)**
-            - 💥 **블록 블라스트 (Block Blast)**
-            - 🚀 **벽돌 깨기 (Brick Breaker)**
-            - 🦖 **크롬 공룡 게임 (Chrome Dino)**
-            - 💣 **지뢰 찾기 (Minesweeper)**
-            
-            하단의 `app-debug.apk`를 안드로이드 폰에 다운로드하여 설치 후 플레이하세요!
+            ## 🧮 계산기 (시크릿 아케이드 게임) APK 릴리즈
+
+            - **고정 서명 키 적용**: 이전 앱을 삭제하지 않고도 덮어쓰기 업데이트가 정상 동작합니다.
+            - **버전**: v1.0.${{ github.run_number }} (빌드 번호: ${{ github.run_number }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
