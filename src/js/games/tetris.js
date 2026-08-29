@@ -32,7 +32,7 @@ export class TetrisGame {
     this.level = 1;
     this.highScore = getHighScore('tetris');
 
-    this.dropInterval = 800; // ms
+    this.dropInterval = 750; // ms
     this.lastDropTime = 0;
     this.isRunning = false;
     this.animationFrameId = null;
@@ -103,25 +103,26 @@ export class TetrisGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const width = Math.min(parent.clientWidth - 16, 420);
-    const height = Math.min(parent.clientHeight - 16, 560);
+    const rect = parent.getBoundingClientRect();
+    const width = rect.width > 50 ? rect.width : (window.innerWidth || 360);
+    const height = rect.height > 50 ? rect.height : (window.innerHeight - 150);
     const dpr = window.devicePixelRatio || 1;
 
-    this.canvas.width = width * dpr;
-    this.canvas.height = height * dpr;
+    this.canvas.width = Math.floor(width * dpr);
+    this.canvas.height = Math.floor(height * dpr);
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
 
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
-    // Board fits roughly 65% width, sidebar takes 35%
-    this.cellSize = Math.min(Math.floor((width * 0.62) / COLS), Math.floor((height - 20) / ROWS));
+    // Board fits roughly 65% width, sidebar takes remainder
+    this.cellSize = Math.min(Math.floor((width * 0.62) / COLS), Math.floor((height - 16) / ROWS));
     this.boardWidth = this.cellSize * COLS;
     this.boardHeight = this.cellSize * ROWS;
-    this.boardX = 12;
+    this.boardX = 10;
     this.boardY = Math.floor((height - this.boardHeight) / 2);
-    this.sidebarX = this.boardX + this.boardWidth + 14;
+    this.sidebarX = this.boardX + this.boardWidth + 12;
 
     this.render();
   }
@@ -216,7 +217,6 @@ export class TetrisGame {
       }
     }
 
-    // Wall kick attempts
     const kicks = [0, -1, 1, -2, 2];
     for (let kick of kicks) {
       if (!this.checkCollision(this.currentPiece.x + kick, this.currentPiece.y, rotated)) {
@@ -274,7 +274,7 @@ export class TetrisGame {
         this.grid.splice(r, 1);
         this.grid.unshift(Array(COLS).fill(0));
         cleared++;
-        r++; // Check same row index again
+        r++;
       }
     }
 
@@ -284,7 +284,6 @@ export class TetrisGame {
       this.score += points;
       sound.playLineClear();
 
-      // Level progression
       this.level = Math.floor(this.lines / 10) + 1;
       this.dropInterval = Math.max(120, 750 - (this.level - 1) * 60);
 
@@ -331,7 +330,6 @@ export class TetrisGame {
     const w = this.canvas.width / (window.devicePixelRatio || 1);
     const h = this.canvas.height / (window.devicePixelRatio || 1);
 
-    // Dark starry/neon background
     this.ctx.fillStyle = '#0b1322';
     this.ctx.fillRect(0, 0, w, h);
 
@@ -342,7 +340,7 @@ export class TetrisGame {
     this.ctx.fillStyle = '#0f1a2e';
     this.ctx.fillRect(this.boardX, this.boardY, this.boardWidth, this.boardHeight);
 
-    // Subtle grid lines
+    // Grid lines
     this.ctx.strokeStyle = '#182740';
     this.ctx.lineWidth = 0.5;
     for (let r = 0; r <= ROWS; r++) {
@@ -407,7 +405,7 @@ export class TetrisGame {
     this.ctx.fillText('점수 (Score)', sx, sy + 15);
 
     this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 16px monospace';
+    this.ctx.font = 'bold 15px monospace';
     this.ctx.fillText(this.score.toLocaleString(), sx, sy + 38);
 
     this.ctx.fillStyle = '#94a3b8';
@@ -452,12 +450,10 @@ export class TetrisGame {
     this.ctx.fillStyle = color;
     this.ctx.fillRect(x + pad, y + pad, bs, bs);
 
-    // Top / Left highlight
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     this.ctx.fillRect(x + pad, y + pad, bs, 2.5);
     this.ctx.fillRect(x + pad, y + pad, 2.5, bs);
 
-    // Bottom / Right shadow
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     this.ctx.fillRect(x + pad, y + pad + bs - 2.5, bs, 2.5);
     this.ctx.fillRect(x + pad + bs - 2.5, y + pad, 2.5, bs);

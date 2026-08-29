@@ -8,6 +8,7 @@ import { TetrisGame } from './games/tetris.js';
 import { BreakoutGame } from './games/breakout.js';
 import { DinoGame } from './games/dino.js';
 import { MinesweeperGame } from './games/minesweeper.js';
+import { Game2048 } from './games/game2048.js';
 
 class App {
   constructor() {
@@ -106,6 +107,11 @@ class App {
     if (minesweeperCanvas) {
       this.games.minesweeper = new MinesweeperGame(minesweeperCanvas, () => this.navigateTo('home'));
     }
+
+    const g2048Canvas = document.getElementById('g2048-canvas');
+    if (g2048Canvas) {
+      this.games.game2048 = new Game2048(g2048Canvas, () => this.navigateTo('home'));
+    }
   }
 
   initNavigation() {
@@ -155,7 +161,6 @@ class App {
       this.activeGameInstance = this.games[screenId];
       history.pushState({ screen: screenId }, '', `#${screenId}`);
 
-      // Double frame check to ensure layout measurements are 100% computed
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (this.activeGameInstance) {
@@ -184,6 +189,7 @@ class App {
         <div class="hs-row"><span>🚀 ${gameTitles.breakout}</span><strong>${scores.breakout.toLocaleString()} 점</strong></div>
         <div class="hs-row"><span>🦖 ${gameTitles.dino}</span><strong>${scores.dino.toLocaleString()} 점</strong></div>
         <div class="hs-row"><span>💣 ${gameTitles.minesweeper}</span><strong>${scores.minesweeper > 0 ? scores.minesweeper + '초' : '기록 없음'}</strong></div>
+        <div class="hs-row"><span>🔢 ${gameTitles.game2048}</span><strong>${scores.game2048.toLocaleString()} 점</strong></div>
       `;
     };
 

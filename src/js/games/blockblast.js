@@ -83,9 +83,11 @@ export class BlockBlastGame {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const scaleX = (this.canvas.width / (window.devicePixelRatio || 1)) / rect.width;
+      const scaleY = (this.canvas.height / (window.devicePixelRatio || 1)) / rect.height;
       return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
       };
     };
 
@@ -102,7 +104,7 @@ export class BlockBlastGame {
           this.dragX = pos.x;
           this.dragY = pos.y + this.dragOffsetHoverY;
           sound.playClick();
-          e.preventDefault();
+          if (e.cancelable) e.preventDefault();
         }
       }
     };
@@ -112,7 +114,7 @@ export class BlockBlastGame {
       const pos = getPos(e);
       this.dragX = pos.x;
       this.dragY = pos.y + this.dragOffsetHoverY;
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
     };
 
     const onEnd = (e) => {
@@ -147,12 +149,13 @@ export class BlockBlastGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const width = Math.min(parent.clientWidth - 16, 420);
-    const height = Math.min(parent.clientHeight - 16, 680);
+    const rect = parent.getBoundingClientRect();
+    const width = rect.width > 50 ? rect.width : (window.innerWidth || 360);
+    const height = rect.height > 50 ? rect.height : (window.innerHeight - 60);
     const dpr = window.devicePixelRatio || 1;
 
-    this.canvas.width = width * dpr;
-    this.canvas.height = height * dpr;
+    this.canvas.width = Math.floor(width * dpr);
+    this.canvas.height = Math.floor(height * dpr);
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
 
@@ -160,13 +163,13 @@ export class BlockBlastGame {
     this.ctx.scale(dpr, dpr);
 
     // Layout calculations
-    this.boardSize = width * 0.94;
+    this.boardSize = Math.min(width - 16, height * 0.65);
     this.boardX = (width - this.boardSize) / 2;
-    this.boardY = 12;
+    this.boardY = 10;
     this.cellSize = this.boardSize / this.gridSize;
 
-    this.trayY = this.boardY + this.boardSize + 20;
-    this.trayHeight = Math.max(110, height - this.trayY - 16);
+    this.trayY = this.boardY + this.boardSize + 14;
+    this.trayHeight = Math.max(100, height - this.trayY - 10);
     this.traySlotWidth = width / 3;
 
     this.render();
@@ -274,8 +277,6 @@ export class BlockBlastGame {
     this.score += blockCount * 10;
     sound.playDrop();
 
-    // Check line clears with user requested score rule:
-    // 1 line = 100 points, 2 lines = 250 points, 3 lines = 350 points (N >= 4: 350 + (N-3)*100)
     this.checkLines();
 
     // Refill check: If all 3 tray pieces used, immediately spawn 3 new pieces
@@ -284,8 +285,6 @@ export class BlockBlastGame {
     }
 
     this.updateScoreUI();
-
-    // Check game over
     this.checkGameOver();
   }
 
@@ -437,7 +436,7 @@ export class BlockBlastGame {
 
     // 1. Draw 8x8 Board Container & Bevel
     this.ctx.fillStyle = '#1c283c';
-    this.ctx.fillRect(this.boardX - 6, this.boardY - 6, this.boardSize + 12, this.boardSize + 12);
+    this.ctx.fillRect(this.boardX - 4, this.boardY - 4, this.boardSize + 8, this.boardSize + 8);
 
     this.ctx.fillStyle = '#0f1724';
     this.ctx.fillRect(this.boardX, this.boardY, this.boardSize, this.boardSize);
@@ -447,7 +446,7 @@ export class BlockBlastGame {
       for (let c = 0; c < this.gridSize; c++) {
         const x = this.boardX + c * this.cellSize;
         const y = this.boardY + r * this.cellSize;
-        const pad = 2;
+        const pad = 1.5;
 
         // Empty Cell
         this.ctx.fillStyle = '#162235';
@@ -489,6 +488,7 @@ export class BlockBlastGame {
 
     // 4. Draw Tray Container
     this.ctx.fillStyle = '#182436';
+    this.ctx.beginPath();
     this.ctx.roundRect ? this.ctx.roundRect(10, this.trayY, w - 20, this.trayHeight, 10) : this.ctx.fillRect(10, this.trayY, w - 20, this.trayHeight);
     this.ctx.fill();
 

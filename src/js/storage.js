@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
   BLOCKBLAST: 'arcade_highscore_blockblast',
   BREAKOUT: 'arcade_highscore_breakout',
   DINO: 'arcade_highscore_dino',
-  MINESWEEPER: 'arcade_highscore_minesweeper', // Best time in seconds
+  MINESWEEPER: 'arcade_highscore_minesweeper',
+  GAME2048: 'arcade_highscore_game2048'
 };
 
 export const gameTitles = {
@@ -15,7 +16,8 @@ export const gameTitles = {
   blockblast: '블록 블라스트',
   breakout: '벽돌 깨기 게임',
   dino: '크롬 공룡 게임',
-  minesweeper: '지뢰 찾기 게임'
+  minesweeper: '지뢰 찾기 게임',
+  game2048: '2048'
 };
 
 export function getHighScore(gameKey) {
@@ -23,7 +25,7 @@ export function getHighScore(gameKey) {
   if (!key) return 0;
   const val = localStorage.getItem(key);
   if (gameKey === 'minesweeper') {
-    return val ? parseInt(val, 10) : 0; // 0 means no record yet
+    return val ? parseInt(val, 10) : 0;
   }
   return val ? parseInt(val, 10) : 0;
 }
@@ -36,7 +38,6 @@ export function saveHighScore(gameKey, score) {
   let isNewHigh = false;
 
   if (gameKey === 'minesweeper') {
-    // For minesweeper, lower time is better (except 0 means no record)
     if (currentHigh === 0 || score < currentHigh) {
       localStorage.setItem(key, score.toString());
       isNewHigh = true;
@@ -58,6 +59,7 @@ export function getAllHighScores() {
     blockblast: getHighScore('blockblast'),
     breakout: getHighScore('breakout'),
     dino: getHighScore('dino'),
-    minesweeper: getHighScore('minesweeper')
+    minesweeper: getHighScore('minesweeper'),
+    game2048: getHighScore('game2048')
   };
 }
