@@ -1,0 +1,83 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install NPM Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Game Application
+        run: npm run build
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Capacitor Android
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Make Gradle Executable
+        run: chmod +x android/gradlew
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arcade-Games-Debug-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release with APK
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Arcade Fun APK Build v${{ github.run_number }}
+          tag_name: v1.0.${{ github.run_number }}
+          body: |
+            ## 🎮 Arcade Fun APK Released!
+            
+            포함된 6가지 고전 아케이드 게임:
+            - 🐍 **스네이크 게임 (Snake Game)**
+            - 🧱 **테트리스 (Tetris)**
+            - 💥 **블록 블라스트 (Block Blast)**
+            - 🚀 **벽돌 깨기 (Brick Breaker)**
+            - 🦖 **크롬 공룡 게임 (Chrome Dino)**
+            - 💣 **지뢰 찾기 (Minesweeper)**
+            
+            하단의 `app-debug.apk`를 안드로이드 폰에 다운로드하여 설치 후 플레이하세요!
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

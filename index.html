@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Arcade Fun - 6 Classic Retro Games</title>
+  <link rel="stylesheet" href="./src/css/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- =========================================
+         1. HOME SCREEN
+         ========================================= -->
+    <div id="screen-home" class="screen-view">
+      <header class="app-header">
+        <h1 class="app-title">ARCADE FUN</h1>
+        <button id="btn-sound-toggle" class="header-icon-btn" title="사운드 온/오프">🔊</button>
+      </header>
+
+      <div class="home-container">
+        <div class="games-grid">
+          <!-- 1. Tetris -->
+          <div class="game-card" data-game="tetris">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #0984e3, #00cec9);">🧱</div>
+            <div class="game-card-title">테트리스</div>
+          </div>
+
+          <!-- 2. Dino -->
+          <div class="game-card" data-game="dino">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #e67e22, #f1c40f);">🦖</div>
+            <div class="game-card-title">크롬 공룡 게임</div>
+          </div>
+
+          <!-- 3. Block Blast -->
+          <div class="game-card" data-game="blockblast">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #8e44ad, #e056fd);">💥</div>
+            <div class="game-card-title">블록 블라스트</div>
+          </div>
+
+          <!-- 4. Snake -->
+          <div class="game-card" data-game="snake">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #27ae60, #2ecc71);">🐍</div>
+            <div class="game-card-title">스네이크 게임</div>
+          </div>
+
+          <!-- 5. Breakout -->
+          <div class="game-card" data-game="breakout">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #2980b9, #3498db);">🚀</div>
+            <div class="game-card-title">벽돌 깨기 게임</div>
+          </div>
+
+          <!-- 6. Minesweeper -->
+          <div class="game-card" data-game="minesweeper">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #7f8c8d, #bdc3c7);">💣</div>
+            <div class="game-card-title">지뢰 찾기 게임</div>
+          </div>
+        </div>
+
+        <div class="home-bottom-bar">
+          <button id="btn-open-highscore" class="btn-highscore">
+            📊 high score
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================
+         2. SNAKE GAME SCREEN
+         ========================================= -->
+    <div id="screen-snake" class="screen-view hidden">
+      <header class="game-header">
+        <button class="btn-header-home">
+          <span>🏠</span> home
+        </button>
+        <div class="game-header-info">
+          SCORE: <span id="snake-score">0</span>
+        </div>
+      </header>
+
+      <div class="game-canvas-area">
+        <div class="canvas-frame">
+          <canvas id="snake-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="pixel-controls-container">
+        <button id="snake-btn-up" class="btn-pixel btn-pixel-square">UP</button>
+        <div class="pixel-dpad-row">
+          <button id="snake-btn-left" class="btn-pixel btn-pixel-square">LEFT</button>
+          <button id="snake-btn-down" class="btn-pixel btn-pixel-square">DOWN</button>
+          <button id="snake-btn-right" class="btn-pixel btn-pixel-square">RIGHT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================
+         3. BLOCK BLAST SCREEN
+         ========================================= -->
+    <div id="screen-blockblast" class="screen-view hidden">
+      <header class="game-header">
+        <button class="btn-header-home">
+          <span>🏠</span> home
+        </button>
+        <div id="blockblast-score" class="game-header-info" style="font-size: 1.05rem;">
+          Score: 0
+        </div>
+      </header>
+
+      <div class="game-canvas-area" style="padding-top: 4px;">
+        <canvas id="blockblast-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- =========================================
+         4. TETRIS SCREEN
+         ========================================= -->
+    <div id="screen-tetris" class="screen-view hidden">
+      <header class="game-header">
+        <button class="btn-header-home">
+          <span>🏠</span> 홈
+        </button>
+        <div class="game-header-info">
+          TETRIS
+        </div>
+      </header>
+
+      <div class="game-canvas-area">
+        <canvas id="tetris-canvas"></canvas>
+      </div>
+
+      <div class="tetris-controls">
+        <button id="tetris-btn-left" class="btn-tetris-round btn-tetris-green">
+          <span style="font-size: 1.4rem;">⬅️</span>
+          <span>왼쪽</span>
+        </button>
+        <button id="tetris-btn-rotate" class="btn-tetris-round btn-tetris-red">
+          <span style="font-size: 1.4rem;">🔄</span>
+          <span>회전</span>
+        </button>
+        <button id="tetris-btn-right" class="btn-tetris-round btn-tetris-blue">
+          <span style="font-size: 1.4rem;">➡️</span>
+          <span>오른쪽</span>
+        </button>
+        <button id="tetris-btn-drop" class="btn-tetris-round btn-tetris-yellow" title="즉시 낙하">
+          <span style="font-size: 1.4rem;">⚡</span>
+          <span>낙하</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- =========================================
+         5. BREAKOUT SCREEN
+         ========================================= -->
+    <div id="screen-breakout" class="screen-view hidden">
+      <header class="game-header">
+        <button class="btn-header-home">
+          <span>🏠</span> home
+        </button>
+        <div class="game-header-info">
+          SCORE: <span id="breakout-score">0</span>
+          <span id="breakout-lives" style="margin-left: 8px;">❤️❤️❤️</span>
+        </div>
+      </header>
+
+      <div class="game-canvas-area">
+        <div class="canvas-frame">
+          <canvas id="breakout-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="pixel-controls-container">
+        <div class="pixel-dpad-row" style="gap: 24px;">
+          <button id="breakout-btn-left" class="btn-pixel btn-pixel-wide">&lt; left</button>
+          <button id="breakout-btn-right" class="btn-pixel btn-pixel-wide">&gt; right</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================
+         6. CHROME DINO SCREEN (LANDSCAPE)
+         ========================================= -->
+    <div id="screen-dino" class="screen-view hidden">
+      <header class="game-header">
+        <button class="btn-header-home">
+          <span>🏠</span> home
+        </button>
+        <div class="game-header-info">
+          <span id="dino-highscore" style="color: #94a3b8; margin-right: 8px;">HI 00000</span>
+          <span id="dino-score">00000</span>
+        </div>
+      </header>
+
+      <div class="game-canvas-area" style="justify-content: center;">
+        <div class="canvas-frame" style="border-width: 4px; width: 96%; max-width: 680px;">
+          <canvas id="dino-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="dino-controls">
+        <button id="dino-btn-jump" class="btn-dino-jump">🦘 JUMP</button>
+        <button id="dino-btn-duck" class="btn-dino-jump" style="background: #64748b; width: 110px;">⬇️ DUCK</button>
+      </div>
+    </div>
+
+    <!-- =========================================
+         7. MINESWEEPER SCREEN
+         ========================================= -->
+    <div id="screen-minesweeper" class="screen-view hidden">
+      <header class="game-header">
+        <button class="btn-header-home">
+          <span>🏠</span> home
+        </button>
+        <div class="game-header-info" style="display: flex; gap: 14px;">
+          <span id="minesweeper-mines-left">💣 10</span>
+          <span id="minesweeper-timer">⏱️ 00:00</span>
+        </div>
+      </header>
+
+      <div class="game-canvas-area">
+        <div class="canvas-frame">
+          <canvas id="minesweeper-canvas"></canvas>
+        </div>
+        <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 8px;">
+          💡 탭: 타일 열기 | 길게 누르기: 깃발 🚩
+        </div>
+      </div>
+
+      <div class="minesweeper-bottom-bar">
+        <button id="minesweeper-btn-restart" class="btn-restart-game">
+          🔄 재시작
+        </button>
+      </div>
+    </div>
+
+    <!-- =========================================
+         GAME OVER & VICTORY MODAL POPUP
+         ========================================= -->
+    <div id="game-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div id="modal-game-title" class="modal-game-title">게임 타이틀</div>
+        <div id="modal-status-text" class="modal-status gameover">💀 GAME OVER</div>
+
+        <div class="modal-scores-card">
+          <div class="score-row">
+            <span>획득 점수</span>
+            <strong id="modal-current-score">0</strong>
+          </div>
+          <div class="score-row">
+            <span>최고 기록</span>
+            <strong id="modal-high-score">0</strong>
+          </div>
+          <div id="modal-new-high-badge" class="badge-new-high hidden">🎉 NEW BEST! 최고 기록 달성</div>
+        </div>
+
+        <div class="modal-buttons-row">
+          <button id="modal-btn-restart" class="btn-modal-action btn-modal-restart">
+            🔄 다시 하기
+          </button>
+          <button id="modal-btn-home" class="btn-modal-action btn-modal-home">
+            🏠 홈으로
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================
+         HIGH SCORE LEADERBOARD MODAL
+         ========================================= -->
+    <div id="highscore-modal-overlay" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-game-title">🏆 HIGH SCORES</div>
+        <div id="highscore-list-content" class="highscore-list">
+          <!-- Dynamically filled -->
+        </div>
+        <button id="btn-close-highscore" class="btn-modal-action btn-modal-home" style="margin-top: 10px;">
+          닫기
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./src/js/main.js"></script>
+</body>
+</html>
