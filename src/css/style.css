@@ -86,10 +86,12 @@ html, body {
 }
 
 .calc-header {
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 4px;
 }
 
 .calc-gear-btn {

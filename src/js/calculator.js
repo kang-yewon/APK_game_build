@@ -11,7 +11,7 @@ class Calculator {
     this.PIN_STORAGE_KEY = 'calculator_secret_pin';
     this.defaultPin = '0000';
 
-    // Feedback/PIN Change flow state
+    // Feedback / Secret PIN Change flow state
     this.pinChangeStep = 1; // 1: Old PIN, 2: New PIN, 3: Confirm PIN
     this.tempOldPin = '';
     this.tempNewPin = '';
@@ -28,16 +28,18 @@ class Calculator {
   }
 
   init() {
-    this.displayEl = document.getElementById('calc-display-current');
-    this.historyEl = document.getElementById('calc-display-history');
+    this.displayEl = document.getElementById('calc-current');
+    this.historyEl = document.getElementById('calc-history');
 
     this.initKeypad();
     this.initSettingsModal();
+    this.updateDisplay();
   }
 
   initKeypad() {
     document.querySelectorAll('.calc-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      const handlePress = (e) => {
+        if (e.cancelable) e.preventDefault();
         const val = btn.getAttribute('data-val');
         const action = btn.getAttribute('data-action');
 
@@ -47,10 +49,18 @@ class Calculator {
           this.backspace();
         } else if (action === 'equals') {
           this.evaluate();
+        } else if (action === 'parentheses') {
+          this.toggleParentheses();
+        } else if (action === 'percent') {
+          this.appendValue('%');
+        } else if (action === 'dot') {
+          this.appendValue('.');
         } else if (val) {
           this.appendValue(val);
         }
-      });
+      };
+
+      btn.addEventListener('pointerdown', handlePress);
     });
 
     // Keyboard support
@@ -80,8 +90,23 @@ class Calculator {
     });
   }
 
+  toggleParentheses() {
+    const openCount = (this.expression.match(/\(/g) || []).length;
+    const closeCount = (this.expression.match(/\)/g) || []).length;
+    const lastChar = this.expression.slice(-1);
+
+    if (openCount > closeCount && !['(', '+', '-', '×', '÷'].includes(lastChar)) {
+      this.appendValue(')');
+    } else {
+      if (['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ')'].includes(lastChar)) {
+        this.appendValue('×(');
+      } else {
+        this.appendValue('(');
+      }
+    }
+  }
+
   appendValue(val) {
-    // If expression was previously showing error, clear it
     if (this.expression === 'Error') {
       this.expression = '';
     }
@@ -109,7 +134,6 @@ class Calculator {
     // Check if the entered text is the 4-digit secret PIN!
     const secretPin = this.getSecretPin();
     if (raw === secretPin) {
-      // Secret unlocked!
       this.clear();
       if (typeof this.onSecretUnlocked === 'function') {
         this.onSecretUnlocked();
@@ -118,18 +142,15 @@ class Calculator {
     }
 
     try {
-      // Replace display operators with JS operators
       let evalExpr = raw
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
         .replace(/%/g, '/100');
 
-      // Sanitize: only allow numbers, math operators, parentheses, decimal point
       if (!/^[0-9+\-*/().\s]+$/.test(evalExpr)) {
-        throw new Error('Invalid characters');
+        throw new Error('Invalid input');
       }
 
-      // Safe evaluation using Function
       const result = new Function(`return ${evalExpr}`)();
 
       if (result === undefined || isNaN(result) || !isFinite(result)) {
@@ -139,7 +160,6 @@ class Calculator {
       if (this.historyEl) {
         this.historyEl.textContent = `${this.expression} =`;
       }
-      // Format result (trim long decimals)
       const formatted = Number(Math.round(result * 1e8) / 1e8).toString();
       this.expression = formatted;
       this.updateDisplay();
@@ -157,69 +177,75 @@ class Calculator {
   }
 
   initSettingsModal() {
-    const btnGear = document.getElementById('calc-btn-settings');
+    const btnGear = document.getElementById('btn-calc-settings');
     const settingsModal = document.getElementById('calc-settings-modal');
-    const btnCloseSettings = document.getElementById('btn-close-calc-settings');
+    const btnCloseSettings = document.getElementById('btn-close-settings');
 
-    // Main Settings Menu Buttons
-    const btnAppInfo = document.getElementById('settings-opt-appinfo');
-    const btnFeedback = document.getElementById('settings-opt-feedback');
-    const btnThanks = document.getElementById('settings-opt-thanks');
-    const btnPremium = document.getElementById('settings-opt-premium');
+    // Menu Item Buttons
+    const btnFeedback = document.getElementById('btn-menu-feedback');
+    const btnAbout = document.getElementById('btn-menu-about');
+    const btnPremium = document.getElementById('btn-menu-premium');
 
-    // Sub Views in Settings
-    const viewMain = document.getElementById('settings-view-main');
-    const viewAppInfo = document.getElementById('settings-view-appinfo');
+    // Subviews
+    const menuMain = document.getElementById('settings-main-menu');
     const viewFeedback = document.getElementById('settings-view-feedback');
-    const viewThanks = document.getElementById('settings-view-thanks');
+    const viewAbout = document.getElementById('settings-view-about');
 
-    const showView = (targetView) => {
-      [viewMain, viewAppInfo, viewFeedback, viewThanks].forEach(v => v?.classList.add('hidden'));
+    const showSubView = (targetView) => {
+      menuMain?.classList.add('hidden');
+      viewFeedback?.classList.add('hidden');
+      viewAbout?.classList.add('hidden');
       targetView?.classList.remove('hidden');
     };
 
-    // Open Settings
-    btnGear?.addEventListener('click', () => {
-      showView(viewMain);
+    const showMainMenu = () => {
+      viewFeedback?.classList.add('hidden');
+      viewAbout?.classList.add('hidden');
+      menuMain?.classList.remove('hidden');
+    };
+
+    // Open Settings Modal
+    btnGear?.addEventListener('pointerdown', (e) => {
+      if (e.cancelable) e.preventDefault();
+      showMainMenu();
       settingsModal?.classList.remove('hidden');
     });
 
-    // Close Settings
+    // Close Settings Modal
     btnCloseSettings?.addEventListener('click', () => {
       settingsModal?.classList.add('hidden');
     });
 
-    // Back to main settings menu buttons
-    document.querySelectorAll('.btn-back-settings-main').forEach(btn => {
-      btn.addEventListener('click', () => showView(viewMain));
-    });
-
-    // 1. App Info
-    btnAppInfo?.addEventListener('click', () => {
-      showView(viewAppInfo);
-    });
-
-    // 2. Feedback (Secret PIN Change)
+    // 1. Feedback (PIN Change)
     btnFeedback?.addEventListener('click', () => {
       this.resetPinChangeFlow();
-      showView(viewFeedback);
+      showSubView(viewFeedback);
     });
 
-    // 3. Thanks
-    btnThanks?.addEventListener('click', () => {
-      showView(viewThanks);
+    // 2. About App
+    btnAbout?.addEventListener('click', () => {
+      showSubView(viewAbout);
     });
 
-    // 4. Premium Update (Easter egg: 💸💸💸)
+    document.getElementById('btn-about-back')?.addEventListener('click', () => {
+      showMainMenu();
+    });
+
+    // 3. Premium Update (Easter Egg 💸💸💸)
     btnPremium?.addEventListener('click', () => {
       this.showToast('💸💸💸');
     });
 
-    // Handle Feedback (PIN Change) submit button
-    const btnPinSubmit = document.getElementById('btn-pin-submit');
-    const inputPin = document.getElementById('input-pin-step');
+    // Feedback PIN Change Flow buttons
+    const btnFeedbackNext = document.getElementById('btn-feedback-next');
+    const btnFeedbackCancel = document.getElementById('btn-feedback-cancel');
+    const inputPin = document.getElementById('input-pin-change');
 
-    btnPinSubmit?.addEventListener('click', () => {
+    btnFeedbackCancel?.addEventListener('click', () => {
+      showMainMenu();
+    });
+
+    btnFeedbackNext?.addEventListener('click', () => {
       this.handlePinStepSubmit(inputPin?.value || '');
     });
 
@@ -236,26 +262,35 @@ class Calculator {
     this.tempNewPin = '';
 
     const titleEl = document.getElementById('feedback-step-title');
-    const inputPin = document.getElementById('input-pin-step');
-    const errorEl = document.getElementById('feedback-step-error');
+    const descEl = document.getElementById('feedback-step-desc');
+    const inputPin = document.getElementById('input-pin-change');
+    const errorEl = document.getElementById('feedback-error-msg');
 
-    if (titleEl) titleEl.textContent = '1단계: 기존 비밀번호를 입력하세요';
+    if (titleEl) titleEl.textContent = '1단계: 기존 비밀번호 입력';
+    if (descEl) descEl.textContent = '현재 설정된 4자리 비밀번호를 입력하세요.';
     if (inputPin) {
       inputPin.value = '';
-      inputPin.placeholder = '4자리 기존 비밀번호';
+      inputPin.placeholder = '기존 비밀번호';
       inputPin.focus();
     }
-    if (errorEl) errorEl.textContent = '';
+    if (errorEl) {
+      errorEl.style.color = '#ef4444';
+      errorEl.textContent = '';
+    }
   }
 
   handlePinStepSubmit(inputVal) {
     const val = inputVal.trim();
     const titleEl = document.getElementById('feedback-step-title');
-    const inputPin = document.getElementById('input-pin-step');
-    const errorEl = document.getElementById('feedback-step-error');
+    const descEl = document.getElementById('feedback-step-desc');
+    const inputPin = document.getElementById('input-pin-change');
+    const errorEl = document.getElementById('feedback-error-msg');
 
     const setError = (msg) => {
-      if (errorEl) errorEl.textContent = msg;
+      if (errorEl) {
+        errorEl.style.color = '#ef4444';
+        errorEl.textContent = msg;
+      }
       if (inputPin) { inputPin.value = ''; inputPin.focus(); }
     };
 
@@ -273,26 +308,28 @@ class Calculator {
       }
       this.tempOldPin = val;
       this.pinChangeStep = 2;
-      if (titleEl) titleEl.textContent = '2단계: 새 비밀번호를 입력하세요';
-      if (inputPin) { inputPin.value = ''; inputPin.placeholder = '새 4자리 비밀번호'; inputPin.focus(); }
+      if (titleEl) titleEl.textContent = '2단계: 새 비밀번호 입력';
+      if (descEl) descEl.textContent = '변경할 새 4자리 비밀번호를 입력하세요.';
+      if (inputPin) { inputPin.value = ''; inputPin.placeholder = '새 비밀번호'; inputPin.focus(); }
       if (errorEl) errorEl.textContent = '';
 
     } else if (this.pinChangeStep === 2) {
       // Step 2: Validate New PIN != Old PIN
       if (val === this.tempOldPin) {
-        setError('새 비밀번호는 기존 비밀번호와 같을 수 없습니다.');
+        setError('기존 비밀번호와 동일한 비밀번호로 변경할 수 없습니다.');
         return;
       }
       this.tempNewPin = val;
       this.pinChangeStep = 3;
-      if (titleEl) titleEl.textContent = '3단계: 새 비밀번호를 다시 입력하세요';
+      if (titleEl) titleEl.textContent = '3단계: 새 비밀번호 확인';
+      if (descEl) descEl.textContent = '새 비밀번호를 한 번 더 입력하세요.';
       if (inputPin) { inputPin.value = ''; inputPin.placeholder = '새 비밀번호 확인'; inputPin.focus(); }
       if (errorEl) errorEl.textContent = '';
 
     } else if (this.pinChangeStep === 3) {
       // Step 3: Validate Confirmation
       if (val !== this.tempNewPin) {
-        setError('새 비밀번호가 일치하지 않습니다. 다시 시도하세요.');
+        setError('비밀번호가 일치하지 않습니다. 다시 입력해주세요.');
         return;
       }
 
@@ -300,11 +337,11 @@ class Calculator {
       this.setSecretPin(this.tempNewPin);
       if (errorEl) {
         errorEl.style.color = '#10b981';
-        errorEl.textContent = '✅ 비밀번호가 성공적으로 변경되었습니다!';
+        errorEl.textContent = '✅ 새 비밀번호가 성공적으로 설정되었습니다!';
       }
       setTimeout(() => {
         document.getElementById('settings-view-feedback')?.classList.add('hidden');
-        document.getElementById('settings-view-main')?.classList.remove('hidden');
+        document.getElementById('settings-main-menu')?.classList.remove('hidden');
         document.getElementById('calc-settings-modal')?.classList.add('hidden');
       }, 1200);
     }
