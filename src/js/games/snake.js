@@ -8,7 +8,7 @@ export class SnakeGame {
     this.ctx = canvas.getContext('2d');
     this.onReturnHome = onReturnHome;
 
-    this.gridSize = 13; // 13x13 grid matching the retro screenshot proportions
+    this.gridSize = 13;
     this.tileSize = 0;
 
     this.snake = [];
@@ -17,7 +17,7 @@ export class SnakeGame {
     this.food = { x: 0, y: 0 };
     this.score = 0;
     this.highScore = getHighScore('snake');
-    this.speed = 135; // ms per step
+    this.speed = 135;
     this.lastTime = 0;
     this.accumulatedTime = 0;
 
@@ -28,7 +28,6 @@ export class SnakeGame {
   }
 
   initControls() {
-    // Touch buttons
     const btnUp = document.getElementById('snake-btn-up');
     const btnDown = document.getElementById('snake-btn-down');
     const btnLeft = document.getElementById('snake-btn-left');
@@ -46,7 +45,6 @@ export class SnakeGame {
     btnLeft?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleInput({ x: -1, y: 0 }); });
     btnRight?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleInput({ x: 1, y: 0 }); });
 
-    // Keyboard support
     window.addEventListener('keydown', (e) => {
       if (!this.isRunning) return;
       if (['ArrowUp', 'KeyW'].includes(e.code)) { handleInput({ x: 0, y: -1 }); e.preventDefault(); }
@@ -55,7 +53,6 @@ export class SnakeGame {
       else if (['ArrowRight', 'KeyD'].includes(e.code)) { handleInput({ x: 1, y: 0 }); e.preventDefault(); }
     });
 
-    // Swipe controls on canvas
     let touchStartX = 0;
     let touchStartY = 0;
 
@@ -85,8 +82,10 @@ export class SnakeGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Maximize canvas size to fill available space
-    const size = Math.min(parent.clientWidth - 8, parent.clientHeight - 8, 480);
+    // Fills 100% available area
+    const availWidth = parent.clientWidth || 360;
+    const availHeight = parent.clientHeight || 360;
+    const size = Math.min(availWidth, availHeight);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = size * dpr;
@@ -174,13 +173,11 @@ export class SnakeGame {
       y: this.snake[0].y + this.direction.y
     };
 
-    // Wall collision
     if (head.x < 0 || head.x >= this.gridSize || head.y < 0 || head.y >= this.gridSize) {
       this.gameOver();
       return;
     }
 
-    // Self collision
     if (this.snake.some(seg => seg.x === head.x && seg.y === head.y)) {
       this.gameOver();
       return;
@@ -188,7 +185,6 @@ export class SnakeGame {
 
     this.snake.unshift(head);
 
-    // Food collision
     if (head.x === this.food.x && head.y === this.food.y) {
       this.score += 10;
       this.updateScoreUI();
@@ -224,7 +220,7 @@ export class SnakeGame {
     this.ctx.fillStyle = '#162235';
     this.ctx.fillRect(0, 0, size, size);
 
-    // 1. Draw Checkered Grid (Light Gray & Light Green)
+    // 1. Draw Checkered Grid
     for (let x = 0; x < this.gridSize; x++) {
       for (let y = 0; y < this.gridSize; y++) {
         const isGreen = (x + y) % 2 === 0;
@@ -236,7 +232,7 @@ export class SnakeGame {
     // 2. Draw Apple
     const fx = this.food.x * ts + ts / 2;
     const fy = this.food.y * ts + ts / 2;
-    const r = ts * 0.4;
+    const r = ts * 0.42;
 
     this.ctx.fillStyle = '#e52521';
     this.ctx.beginPath();
@@ -263,7 +259,6 @@ export class SnakeGame {
       const pad = 1.5;
 
       if (i === 0) {
-        // Head
         this.ctx.fillStyle = '#226b2a';
         this.ctx.fillRect(px + pad, py + pad, ts - pad * 2, ts - pad * 2);
 
@@ -278,13 +273,13 @@ export class SnakeGame {
         let eyeX2 = px + ts - eyeOffset;
         let eyeY2 = py + eyeOffset;
 
-        if (this.direction.x === 1) { // Right
+        if (this.direction.x === 1) {
           eyeX1 = px + ts - eyeOffset; eyeY1 = py + eyeOffset;
           eyeX2 = px + ts - eyeOffset; eyeY2 = py + ts - eyeOffset;
-        } else if (this.direction.x === -1) { // Left
+        } else if (this.direction.x === -1) {
           eyeX1 = px + eyeOffset; eyeY1 = py + eyeOffset;
           eyeX2 = px + eyeOffset; eyeY2 = py + ts - eyeOffset;
-        } else if (this.direction.y === 1) { // Down
+        } else if (this.direction.y === 1) {
           eyeX1 = px + eyeOffset; eyeY1 = py + ts - eyeOffset;
           eyeX2 = px + ts - eyeOffset; eyeY2 = py + ts - eyeOffset;
         }

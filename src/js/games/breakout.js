@@ -27,12 +27,12 @@ export class BreakoutGame {
     this.ballY = 0;
     this.ballSpeedX = 0;
     this.ballSpeedY = 0;
-    this.ballSpeedBase = 5.5;
+    this.ballSpeedBase = 5.2;
     this.ballAttached = true;
 
-    // Bricks
+    // Bricks: 6 columns spanning 100% of top width
     this.brickRows = 6;
-    this.brickCols = 8;
+    this.brickCols = 6;
     this.bricks = [];
     this.brickColors = ['#e74c3c', '#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#1abc9c'];
 
@@ -119,9 +119,8 @@ export class BreakoutGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Much taller vertical aspect ratio for comfortable breakout gameplay
-    const width = Math.min(parent.clientWidth - 12, 420);
-    const height = Math.min(parent.clientHeight - 8, 620);
+    const width = Math.min(parent.clientWidth - 4, 460);
+    const height = Math.min(parent.clientHeight - 4, 640);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = width * dpr;
@@ -132,6 +131,8 @@ export class BreakoutGame {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
+    this.paddleWidth = Math.max(75, Math.min(95, width * 0.24));
+    this.recalculateBricksLayout();
     this.resetBall();
     this.render();
   }
@@ -143,12 +144,11 @@ export class BreakoutGame {
     this.level = 1;
     this.updateUI();
 
+    this.resize();
     this.initBricks();
     this.resetBall();
 
     this.isRunning = true;
-    this.resize();
-
     cancelAnimationFrame(this.animationFrameId);
     this.loop();
   }
@@ -160,18 +160,21 @@ export class BreakoutGame {
 
   initBricks() {
     const w = this.canvas.width / (window.devicePixelRatio || 1) || 360;
-    const padding = 6;
-    const offsetTop = 45;
-    const offsetLeft = 12;
-    const brickWidth = (w - offsetLeft * 2 - (this.brickCols - 1) * padding) / this.brickCols;
-    const brickHeight = 18;
+    const marginX = 8;
+    const paddingX = 4;
+    const paddingY = 5;
+    const offsetTop = 40;
+    const totalGaps = (this.brickCols - 1) * paddingX;
+    const brickWidth = (w - marginX * 2 - totalGaps) / this.brickCols;
+    const brickHeight = 15; // Wide horizontal rectangle
 
     this.bricks = [];
     for (let r = 0; r < this.brickRows; r++) {
       for (let c = 0; c < this.brickCols; c++) {
-        const x = offsetLeft + c * (brickWidth + padding);
-        const y = offsetTop + r * (brickHeight + padding);
+        const x = marginX + c * (brickWidth + paddingX);
+        const y = offsetTop + r * (brickHeight + paddingY);
         this.bricks.push({
+          r, c,
           x, y,
           w: brickWidth,
           h: brickHeight,
@@ -181,6 +184,25 @@ export class BreakoutGame {
         });
       }
     }
+  }
+
+  recalculateBricksLayout() {
+    if (!this.bricks || this.bricks.length === 0) return;
+    const w = this.canvas.width / (window.devicePixelRatio || 1) || 360;
+    const marginX = 8;
+    const paddingX = 4;
+    const paddingY = 5;
+    const offsetTop = 40;
+    const totalGaps = (this.brickCols - 1) * paddingX;
+    const brickWidth = (w - marginX * 2 - totalGaps) / this.brickCols;
+    const brickHeight = 15;
+
+    this.bricks.forEach(b => {
+      b.x = marginX + b.c * (brickWidth + paddingX);
+      b.y = offsetTop + b.r * (brickHeight + paddingY);
+      b.w = brickWidth;
+      b.h = brickHeight;
+    });
   }
 
   resetBall() {
@@ -198,7 +220,7 @@ export class BreakoutGame {
   launchBall() {
     if (!this.ballAttached) return;
     this.ballAttached = false;
-    const angle = (Math.random() * 0.6 - 0.3) * Math.PI; // -54 to +54 deg from vertical
+    const angle = (Math.random() * 0.6 - 0.3) * Math.PI;
     const speed = this.ballSpeedBase + (this.level - 1) * 0.5;
     this.ballSpeedX = Math.sin(angle) * speed;
     this.ballSpeedY = -Math.cos(angle) * speed;
@@ -261,7 +283,7 @@ export class BreakoutGame {
       this.ballSpeedY > 0
     ) {
       const hitPoint = (this.ballX - (this.paddleX + this.paddleWidth / 2)) / (this.paddleWidth / 2);
-      const maxBounceAngle = Math.PI * 0.38; // 68 degrees
+      const maxBounceAngle = Math.PI * 0.38;
       const bounceAngle = hitPoint * maxBounceAngle;
       const speed = Math.hypot(this.ballSpeedX, this.ballSpeedY);
 
@@ -385,23 +407,23 @@ export class BreakoutGame {
       this.ctx.fillRect(star.x * w, star.y * h, star.size, star.size);
     });
 
-    // 2. Bricks
+    // 2. Bricks (Wide horizontal rectangles evenly spanning across the top)
     this.bricks.forEach(b => {
       if (!b.alive) return;
       this.ctx.fillStyle = b.color;
       this.ctx.fillRect(b.x, b.y, b.w, b.h);
 
       // Bevel
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
       this.ctx.fillRect(b.x, b.y, b.w, 2);
       this.ctx.fillRect(b.x, b.y, 2, b.h);
 
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
       this.ctx.fillRect(b.x, b.y + b.h - 2, b.w, 2);
       this.ctx.fillRect(b.x + b.w - 2, b.y, 2, b.h);
     });
 
-    // 3. Paddle (Metallic bevel pill)
+    // 3. Paddle
     const paddleY = h - 45;
     this.ctx.fillStyle = '#bdc3c7';
     this.ctx.beginPath();
@@ -411,7 +433,7 @@ export class BreakoutGame {
     this.ctx.fillStyle = '#3498db';
     this.ctx.fillRect(this.paddleX + 10, paddleY + 3, this.paddleWidth - 20, this.paddleHeight - 6);
 
-    // 4. Ball (Glowing colorful sphere)
+    // 4. Ball
     this.ctx.save();
     this.ctx.shadowColor = '#00d2d3';
     this.ctx.shadowBlur = 10;
@@ -429,10 +451,9 @@ export class BreakoutGame {
       this.ctx.globalAlpha = 1.0;
     });
 
-    // Launch hint if attached
     if (this.ballAttached) {
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      this.ctx.font = '12px sans-serif';
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      this.ctx.font = '13px sans-serif';
       this.ctx.textAlign = 'center';
       this.ctx.fillText('화면을 터치하거나 버튼을 눌러 발사', w / 2, h - 80);
       this.ctx.textAlign = 'left';

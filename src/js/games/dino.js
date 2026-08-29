@@ -10,7 +10,8 @@ export class DinoGame {
 
     this.score = 0;
     this.highScore = getHighScore('dino');
-    this.speed = 5.0; // Starts easier
+    this.initialSpeed = 3.4; // Very comfortable slow initial speed
+    this.speed = this.initialSpeed;
     this.distance = 0;
     this.gameStartTime = 0;
     this.obstacleDelayMs = 4000; // 4 seconds delay before any obstacle spawns
@@ -33,7 +34,7 @@ export class DinoGame {
     this.groundY = 170;
     this.obstacles = [];
     this.clouds = [];
-    this.nextObstacleDistance = 80;
+    this.nextObstacleDistance = 140;
 
     this.isNightMode = false;
     this.isRunning = false;
@@ -90,8 +91,8 @@ export class DinoGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Landscape wide canvas
-    const width = Math.min(parent.clientWidth - 16, 680);
+    // Landscape wide canvas filling width
+    const width = parent.clientWidth - 8;
     const height = Math.min(Math.floor(width * 0.45), 260);
     const dpr = window.devicePixelRatio || 1;
 
@@ -113,7 +114,7 @@ export class DinoGame {
     this.highScore = getHighScore('dino');
     this.score = 0;
     this.distance = 0;
-    this.speed = 5.0; // Easier initial speed
+    this.speed = this.initialSpeed; // Slow comfortable start (3.4)
     this.isNightMode = false;
     this.gameStartTime = performance.now();
     this.updateUI();
@@ -121,7 +122,6 @@ export class DinoGame {
     this.dino.vy = 0;
     this.dino.isGrounded = true;
     this.dino.isDucking = false;
-    this.dino.y = this.groundY - this.dino.h;
 
     this.obstacles = [];
     this.clouds = [
@@ -129,7 +129,7 @@ export class DinoGame {
       { x: 320, y: 55, speed: 0.6 },
       { x: 520, y: 25, speed: 0.9 }
     ];
-    this.nextObstacleDistance = 140;
+    this.nextObstacleDistance = 160;
 
     this.isRunning = true;
     this.resize();
@@ -164,7 +164,7 @@ export class DinoGame {
     // Score & Speed
     this.distance += this.speed;
     const prevScore = Math.floor(this.score);
-    this.score += 0.15;
+    this.score += 0.12;
     const curScore = Math.floor(this.score);
 
     // Milestone sound every 100 points
@@ -175,8 +175,8 @@ export class DinoGame {
     // Day/Night switch every 500 points
     this.isNightMode = Math.floor(curScore / 500) % 2 === 1;
 
-    // Gradual speed scaling starting from 5.0 up to 13.0
-    this.speed = Math.min(13.0, 5.0 + Math.floor(curScore / 80) * 0.35);
+    // Smooth speed scaling: Starts slow (3.4) and increases gradually
+    this.speed = Math.min(13.0, this.initialSpeed + Math.floor(curScore / 70) * 0.3);
     this.updateUI();
 
     // Dino Physics
@@ -193,7 +193,7 @@ export class DinoGame {
 
     // Dino animation
     this.dino.animTimer++;
-    if (this.dino.animTimer % 6 === 0) {
+    if (this.dino.animTimer % 7 === 0) {
       this.dino.legFrame = (this.dino.legFrame + 1) % 2;
     }
 
@@ -211,7 +211,7 @@ export class DinoGame {
       this.nextObstacleDistance -= this.speed;
       if (this.nextObstacleDistance <= 0) {
         this.spawnObstacle(w);
-        this.nextObstacleDistance = Math.random() * 220 + 170 + (12 - this.speed) * 12;
+        this.nextObstacleDistance = Math.random() * 220 + 180 + (12 - this.speed) * 12;
       }
     }
 
@@ -256,7 +256,7 @@ export class DinoGame {
         frame: 0
       });
     } else {
-      const cactusType = Math.floor(Math.random() * 3); // small single, small double, large
+      const cactusType = Math.floor(Math.random() * 3);
       let w = 18, h = 34;
       if (cactusType === 1) { w = 34; h = 34; }
       else if (cactusType === 2) { w = 24; h = 46; }
@@ -273,7 +273,7 @@ export class DinoGame {
   }
 
   checkCollision(dino, obs) {
-    const pad = 6; // Hitbox forgiveness
+    const pad = 6;
     const dinoW = dino.isDucking ? dino.w + 10 : dino.w;
     const dinoH = dino.isDucking ? dino.h * 0.6 : dino.h;
     const dinoY = dino.isDucking ? this.groundY - dinoH : dino.y;
@@ -326,7 +326,6 @@ export class DinoGame {
     this.ctx.fillStyle = fgColor;
     this.ctx.fillRect(0, this.groundY, w, 2);
 
-    // Moving terrain dots
     const offset = Math.floor(this.distance) % 20;
     for (let x = -offset; x < w; x += 20) {
       if ((x + 5) % 40 === 0) {
@@ -336,7 +335,7 @@ export class DinoGame {
       }
     }
 
-    // 3. Draw Dino (Pixel T-Rex)
+    // 3. Draw Dino
     this.drawDino(fgColor);
 
     // 4. Draw Obstacles
@@ -355,18 +354,15 @@ export class DinoGame {
     this.ctx.fillStyle = color;
 
     if (!d.isDucking) {
-      // Body & Head
-      this.ctx.fillRect(d.x + 16, dy, 18, 16); // Head
-      this.ctx.fillRect(d.x + 12, dy + 16, 16, 14); // Torso
-      this.ctx.fillRect(d.x, dy + 18, 12, 8); // Tail
-      this.ctx.fillRect(d.x + 28, dy + 16, 4, 3); // Arm
+      this.ctx.fillRect(d.x + 16, dy, 18, 16);
+      this.ctx.fillRect(d.x + 12, dy + 16, 16, 14);
+      this.ctx.fillRect(d.x, dy + 18, 12, 8);
+      this.ctx.fillRect(d.x + 28, dy + 16, 4, 3);
 
-      // Eye (cutout)
       this.ctx.fillStyle = this.isNightMode ? '#1e293b' : '#f8fafc';
       this.ctx.fillRect(d.x + 20, dy + 3, 3, 3);
       this.ctx.fillStyle = color;
 
-      // Legs
       if (d.isGrounded) {
         if (d.legFrame === 0) {
           this.ctx.fillRect(d.x + 14, dy + 30, 4, 10);
@@ -376,15 +372,13 @@ export class DinoGame {
           this.ctx.fillRect(d.x + 22, dy + 30, 4, 10);
         }
       } else {
-        // Jumping legs tucked
         this.ctx.fillRect(d.x + 14, dy + 30, 4, 6);
         this.ctx.fillRect(d.x + 22, dy + 30, 4, 6);
       }
     } else {
-      // Ducking Dino
-      this.ctx.fillRect(d.x + 10, dy + 4, 30, 12); // Long body
-      this.ctx.fillRect(d.x + 36, dy, 8, 8); // Low head
-      this.ctx.fillRect(d.x, dy + 6, 10, 8); // Tail
+      this.ctx.fillRect(d.x + 10, dy + 4, 30, 12);
+      this.ctx.fillRect(d.x + 36, dy, 8, 8);
+      this.ctx.fillRect(d.x, dy + 6, 10, 8);
       this.ctx.fillRect(d.x + 16, dy + 16, 4, 8);
       this.ctx.fillRect(d.x + 26, dy + 16, 4, 8);
     }

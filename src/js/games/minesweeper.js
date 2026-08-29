@@ -99,7 +99,6 @@ export class MinesweeperGame {
 
       if (this.longPressTimer) clearTimeout(this.longPressTimer);
 
-      // Start Long Press Timer (320ms)
       this.longPressTimer = setTimeout(() => {
         if (!this.isRunning || this.isGameOver || this.isVictory) return;
         this.isLongPressTriggered = true;
@@ -117,7 +116,6 @@ export class MinesweeperGame {
       const pos = getPos(e);
       const dist = Math.hypot(pos.x - this.touchStartPos.x, pos.y - this.touchStartPos.y);
 
-      // If finger moves more than 8 pixels, cancel long press (user is scrolling / dragging)
       if (dist > 8) {
         if (this.longPressTimer) {
           clearTimeout(this.longPressTimer);
@@ -178,8 +176,10 @@ export class MinesweeperGame {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Maximize canvas size to fill available space
-    const size = Math.min(parent.clientWidth - 8, parent.clientHeight - 8, 480);
+    // Fills 100% available area
+    const availWidth = parent.clientWidth || 360;
+    const availHeight = parent.clientHeight || 360;
+    const size = Math.min(availWidth, availHeight);
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = size * dpr;
@@ -190,7 +190,7 @@ export class MinesweeperGame {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
-    this.boardSize = size * 0.96;
+    this.boardSize = size * 0.98;
     this.boardX = (size - this.boardSize) / 2;
     this.boardY = (size - this.boardSize) / 2;
     this.cellSize = this.boardSize / this.cols;
@@ -199,7 +199,6 @@ export class MinesweeperGame {
   }
 
   start() {
-    // Show difficulty selection modal before game starts
     this.promptDifficulty();
   }
 
@@ -267,7 +266,6 @@ export class MinesweeperGame {
       const r = Math.floor(Math.random() * this.rows);
       const c = Math.floor(Math.random() * this.cols);
 
-      // Safe 3x3 region around first click
       const isAroundSafe = Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1;
 
       if (!this.board[r][c].isMine && !isAroundSafe) {
@@ -276,7 +274,6 @@ export class MinesweeperGame {
       }
     }
 
-    // Calculate neighboring mine counts
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         if (!this.board[r][c].isMine) {
@@ -435,24 +432,22 @@ export class MinesweeperGame {
     const w = this.canvas.width / (window.devicePixelRatio || 1);
     const h = this.canvas.height / (window.devicePixelRatio || 1);
 
-    // Background
     this.ctx.fillStyle = '#0f172a';
     this.ctx.fillRect(0, 0, w, h);
 
-    // Board Bevel Border
     this.ctx.fillStyle = '#334155';
-    this.ctx.fillRect(this.boardX - 4, this.boardY - 4, this.boardSize + 8, this.boardSize + 8);
+    this.ctx.fillRect(this.boardX - 3, this.boardY - 3, this.boardSize + 6, this.boardSize + 6);
 
     const NUMBER_COLORS = [
       '',
-      '#3b82f6', // 1: Blue
-      '#22c55e', // 2: Green
-      '#ef4444', // 3: Red
-      '#8b5cf6', // 4: Purple
-      '#b91c1c', // 5: Dark Red
-      '#06b6d4', // 6: Cyan
-      '#000000', // 7: Black
-      '#64748b'  // 8: Gray
+      '#3b82f6', // 1
+      '#22c55e', // 2
+      '#ef4444', // 3
+      '#8b5cf6', // 4
+      '#b91c1c', // 5
+      '#06b6d4', // 6
+      '#000000', // 7
+      '#64748b'  // 8
     ];
 
     for (let r = 0; r < this.rows; r++) {
@@ -470,7 +465,7 @@ export class MinesweeperGame {
             this.ctx.strokeRect(x, y, s, s);
 
             this.ctx.fillStyle = '#000000';
-            this.ctx.font = `${Math.floor(s * 0.58)}px sans-serif`;
+            this.ctx.font = `${Math.floor(s * 0.6)}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('💣', x + s / 2, y + s / 2 + 1);
@@ -483,14 +478,13 @@ export class MinesweeperGame {
 
             if (cell.neighborCount > 0) {
               this.ctx.fillStyle = NUMBER_COLORS[cell.neighborCount] || '#000000';
-              this.ctx.font = `bold ${Math.floor(s * 0.58)}px monospace`;
+              this.ctx.font = `bold ${Math.floor(s * 0.6)}px monospace`;
               this.ctx.textAlign = 'center';
               this.ctx.textBaseline = 'middle';
               this.ctx.fillText(cell.neighborCount, x + s / 2, y + s / 2 + 1);
             }
           }
         } else {
-          // Unrevealed 3D beveled tile
           this.ctx.fillStyle = '#94a3b8';
           this.ctx.fillRect(x, y, s, s);
 
@@ -500,10 +494,10 @@ export class MinesweeperGame {
 
           this.ctx.fillStyle = '#475569';
           this.ctx.fillRect(x, y + s - 3, s, 3);
-          this.ctx.fillRect(x + sizeTileEdge(s), y, 3, s);
+          this.ctx.fillRect(x + s - 3, y, 3, s);
 
           if (cell.isFlagged) {
-            this.ctx.font = `${Math.floor(s * 0.58)}px sans-serif`;
+            this.ctx.font = `${Math.floor(s * 0.6)}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText('🚩', x + s / 2, y + s / 2 + 1);
@@ -512,8 +506,4 @@ export class MinesweeperGame {
       }
     }
   }
-}
-
-function sizeTileEdge(s) {
-  return s - 3;
 }
