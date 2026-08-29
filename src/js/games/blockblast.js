@@ -46,8 +46,8 @@ export class BlockBlastGame {
     this.onReturnHome = onReturnHome;
 
     this.gridSize = 8; // 8x8 Board
-    this.board = []; // 8x8 grid cells (null or color)
-    this.trayPieces = [null, null, null]; // 3 slots in tray
+    this.board = [];
+    this.trayPieces = [null, null, null];
     this.score = 0;
     this.highScore = getHighScore('blockblast');
     this.combo = 0;
@@ -67,11 +67,9 @@ export class BlockBlastGame {
     this.dragIndex = -1;
     this.dragX = 0;
     this.dragY = 0;
-    this.dragOffsetHoverY = -70; // Lift above finger for mobile visibility
+    this.dragOffsetHoverY = -60; // Lift above finger for mobile visibility
 
-    this.selectedTrayIndex = -1;
     this.particles = [];
-
     this.isRunning = false;
     this.animationFrameId = null;
 
@@ -81,10 +79,12 @@ export class BlockBlastGame {
   initTouch() {
     const getPos = (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const scaleX = (this.canvas.width / (window.devicePixelRatio || 1)) / rect.width;
-      const scaleY = (this.canvas.height / (window.devicePixelRatio || 1)) / rect.height;
+      const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : (e.changedTouches && e.changedTouches.length > 0 ? e.changedTouches[0].clientX : e.clientX);
+      const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : (e.changedTouches && e.changedTouches.length > 0 ? e.changedTouches[0].clientY : e.clientY);
+      const logicalW = this.canvas.width / (window.devicePixelRatio || 1);
+      const logicalH = this.canvas.height / (window.devicePixelRatio || 1);
+      const scaleX = rect.width > 0 ? (logicalW / rect.width) : 1;
+      const scaleY = rect.height > 0 ? (logicalH / rect.height) : 1;
       return {
         x: (clientX - rect.left) * scaleX,
         y: (clientY - rect.top) * scaleY
@@ -96,11 +96,10 @@ export class BlockBlastGame {
       const pos = getPos(e);
 
       // Check if clicked in tray
-      if (pos.y >= this.trayY && pos.y <= this.trayY + this.trayHeight) {
+      if (pos.y >= this.trayY - 10 && pos.y <= this.trayY + this.trayHeight + 10) {
         const slotIdx = Math.floor(pos.x / this.traySlotWidth);
         if (slotIdx >= 0 && slotIdx < 3 && this.trayPieces[slotIdx]) {
           this.dragIndex = slotIdx;
-          this.selectedTrayIndex = slotIdx;
           this.dragX = pos.x;
           this.dragY = pos.y + this.dragOffsetHoverY;
           sound.playClick();
@@ -129,10 +128,10 @@ export class BlockBlastGame {
         const gridPos = this.getGridCoordForPiece(piece, this.dragX, this.dragY);
         if (gridPos && this.canPlace(piece.matrix, gridPos.r, gridPos.c)) {
           this.placePiece(piece, gridPos.r, gridPos.c, pieceIdx);
-          this.selectedTrayIndex = -1;
         }
       }
       this.dragIndex = -1;
+      if (e && e.cancelable) e.preventDefault();
     };
 
     this.canvas.addEventListener('touchstart', onStart, { passive: false });
@@ -163,13 +162,13 @@ export class BlockBlastGame {
     this.ctx.scale(dpr, dpr);
 
     // Layout calculations
-    this.boardSize = Math.min(width - 16, height * 0.65);
+    this.boardSize = Math.min(width - 12, height * 0.65);
     this.boardX = (width - this.boardSize) / 2;
-    this.boardY = 10;
+    this.boardY = 8;
     this.cellSize = this.boardSize / this.gridSize;
 
-    this.trayY = this.boardY + this.boardSize + 14;
-    this.trayHeight = Math.max(100, height - this.trayY - 10);
+    this.trayY = this.boardY + this.boardSize + 12;
+    this.trayHeight = Math.max(90, height - this.trayY - 8);
     this.traySlotWidth = width / 3;
 
     this.render();
@@ -272,14 +271,12 @@ export class BlockBlastGame {
       }
     }
 
-    // Mark tray piece as consumed
     this.trayPieces[traySlotIndex] = null;
     this.score += blockCount * 10;
     sound.playDrop();
 
     this.checkLines();
 
-    // Refill check: If all 3 tray pieces used, immediately spawn 3 new pieces
     if (this.trayPieces.every(p => p === null)) {
       this.spawnTrayPieces();
     }
@@ -315,7 +312,6 @@ export class BlockBlastGame {
     if (totalLines > 0) {
       this.combo++;
 
-      // Scoring: 1 line = 100, 2 lines = 250, 3 lines = 350
       let linePoints = 0;
       if (totalLines === 1) linePoints = 100;
       else if (totalLines === 2) linePoints = 250;
@@ -330,19 +326,12 @@ export class BlockBlastGame {
         sound.playCombo(this.combo);
       }
 
-      // Spawn particles & clear cells
       const clearedSet = new Set();
-
       fullRows.forEach(r => {
-        for (let c = 0; c < this.gridSize; c++) {
-          clearedSet.add(`${r},${c}`);
-        }
+        for (let c = 0; c < this.gridSize; c++) clearedSet.add(`${r},${c}`);
       });
-
       fullCols.forEach(c => {
-        for (let r = 0; r < this.gridSize; r++) {
-          clearedSet.add(`${r},${c}`);
-        }
+        for (let r = 0; r < this.gridSize; r++) clearedSet.add(`${r},${c}`);
       });
 
       clearedSet.forEach(coord => {
@@ -426,9 +415,25 @@ export class BlockBlastGame {
     }
   }
 
+  drawRoundedRect(x, y, w, h, r) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + r, y);
+    this.ctx.lineTo(x + w - r, y);
+    this.ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.ctx.lineTo(x + w, y + h - r);
+    this.ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.ctx.lineTo(x + r, y + h);
+    this.ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.ctx.lineTo(x, y + r);
+    this.ctx.quadraticCurveTo(x, y, x + r, y);
+    this.ctx.closePath();
+    this.ctx.fill();
+  }
+
   render() {
     const w = this.canvas.width / (window.devicePixelRatio || 1);
     const h = this.canvas.height / (window.devicePixelRatio || 1);
+    if (w <= 0 || h <= 0) return;
 
     // Background
     this.ctx.fillStyle = '#0e1626';
@@ -488,9 +493,7 @@ export class BlockBlastGame {
 
     // 4. Draw Tray Container
     this.ctx.fillStyle = '#182436';
-    this.ctx.beginPath();
-    this.ctx.roundRect ? this.ctx.roundRect(10, this.trayY, w - 20, this.trayHeight, 10) : this.ctx.fillRect(10, this.trayY, w - 20, this.trayHeight);
-    this.ctx.fill();
+    this.drawRoundedRect(10, this.trayY, w - 20, this.trayHeight, 10);
 
     // 5. Draw Tray Pieces
     for (let i = 0; i < 3; i++) {

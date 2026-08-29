@@ -1,4 +1,4 @@
-// Calculator Module with Secret Arcade Door & Settings Management
+// Calculator Module with Secret Arcade Door, Settings Management & Easter Eggs
 
 class Calculator {
   constructor(onSecretUnlocked) {
@@ -91,6 +91,11 @@ class Calculator {
   }
 
   toggleParentheses() {
+    if (['Error', '💖', '칭구칭구', '👼'].includes(this.expression)) {
+      this.expression = '';
+      if (this.historyEl) this.historyEl.textContent = '';
+    }
+
     const openCount = (this.expression.match(/\(/g) || []).length;
     const closeCount = (this.expression.match(/\)/g) || []).length;
     const lastChar = this.expression.slice(-1);
@@ -107,8 +112,9 @@ class Calculator {
   }
 
   appendValue(val) {
-    if (this.expression === 'Error') {
+    if (['Error', '💖', '칭구칭구', '👼'].includes(this.expression)) {
       this.expression = '';
+      if (this.historyEl) this.historyEl.textContent = '';
     }
     this.expression += val;
     this.updateDisplay();
@@ -121,6 +127,10 @@ class Calculator {
   }
 
   backspace() {
+    if (['Error', '💖', '칭구칭구', '👼'].includes(this.expression)) {
+      this.clear();
+      return;
+    }
     if (this.expression.length > 0) {
       this.expression = this.expression.slice(0, -1);
       this.updateDisplay();
@@ -131,16 +141,40 @@ class Calculator {
     const raw = this.expression.trim();
     if (!raw) return;
 
-    // Check if the entered text is the 4-digit secret PIN!
+    // 1. Secret Arcade Unlock PIN
     const secretPin = this.getSecretPin();
     if (raw === secretPin) {
       this.clear();
       if (typeof this.onSecretUnlocked === 'function') {
-        this.onSecretUnlocked();
+        // Prevent touch through to home screen buttons
+        setTimeout(() => {
+          this.onSecretUnlocked();
+        }, 120);
       }
       return;
     }
 
+    // 2. Easter Eggs
+    if (raw === '486') {
+      if (this.historyEl) this.historyEl.textContent = '486 =';
+      this.expression = '💖';
+      this.updateDisplay();
+      return;
+    }
+    if (raw === '7942') {
+      if (this.historyEl) this.historyEl.textContent = '7942 =';
+      this.expression = '칭구칭구';
+      this.updateDisplay();
+      return;
+    }
+    if (raw === '1004') {
+      if (this.historyEl) this.historyEl.textContent = '1004 =';
+      this.expression = '👼';
+      this.updateDisplay();
+      return;
+    }
+
+    // 3. Normal Math Calculation
     try {
       let evalExpr = raw
         .replace(/×/g, '*')

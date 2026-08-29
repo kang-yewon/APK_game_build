@@ -33,12 +33,9 @@ export class Game2048 {
 
     // Layout
     this.boardSize = 0;
-    this.boardX = 0;
-    this.boardY = 0;
     this.cellSize = 0;
     this.cellPadding = 0;
 
-    this.particles = [];
     this.isRunning = false;
     this.animationFrameId = null;
 
@@ -50,7 +47,6 @@ export class Game2048 {
     const btnDown = document.getElementById('g2048-btn-down');
     const btnLeft = document.getElementById('g2048-btn-left');
     const btnRight = document.getElementById('g2048-btn-right');
-    const btnRestart = document.getElementById('g2048-btn-restart');
 
     const handleMove = (dir) => {
       if (!this.isRunning || this.over) return;
@@ -64,14 +60,10 @@ export class Game2048 {
       }
     };
 
-    btnUp?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleMove('up'); });
-    btnDown?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleMove('down'); });
-    btnLeft?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleMove('left'); });
-    btnRight?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleMove('right'); });
-    btnRestart?.addEventListener('click', () => {
-      sound.playClick();
-      this.start();
-    });
+    btnUp?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('up'); });
+    btnDown?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('down'); });
+    btnLeft?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('left'); });
+    btnRight?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('right'); });
 
     // Keyboard
     window.addEventListener('keydown', (e) => {
@@ -114,13 +106,13 @@ export class Game2048 {
 
     const rect = parent.getBoundingClientRect();
     const availW = rect.width > 50 ? rect.width : (window.innerWidth || 360);
-    const availH = rect.height > 50 ? rect.height : (window.innerHeight - 180);
+    const availH = rect.height > 50 ? rect.height : (window.innerHeight - 170);
 
-    const size = Math.min(availW - 12, availH - 12, 420);
+    const size = Math.min(availW - 10, availH - 10, 420);
     const dpr = window.devicePixelRatio || 1;
 
-    this.canvas.width = size * dpr;
-    this.canvas.height = size * dpr;
+    this.canvas.width = Math.floor(size * dpr);
+    this.canvas.height = Math.floor(size * dpr);
     this.canvas.style.width = `${size}px`;
     this.canvas.style.height = `${size}px`;
 
@@ -128,7 +120,7 @@ export class Game2048 {
     this.ctx.scale(dpr, dpr);
 
     this.boardSize = size;
-    this.cellPadding = Math.floor(size * 0.03);
+    this.cellPadding = Math.max(6, Math.floor(size * 0.035));
     this.cellSize = (this.boardSize - this.cellPadding * (this.size + 1)) / this.size;
 
     this.render();
@@ -139,7 +131,6 @@ export class Game2048 {
     this.score = 0;
     this.won = false;
     this.over = false;
-    this.particles = [];
 
     // Clear 4x4 Grid
     this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(0));
@@ -322,15 +313,29 @@ export class Game2048 {
     this.animationFrameId = requestAnimationFrame(() => this.loop());
   }
 
+  drawRoundedRect(x, y, w, h, r) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + r, y);
+    this.ctx.lineTo(x + w - r, y);
+    this.ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.ctx.lineTo(x + w, y + h - r);
+    this.ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.ctx.lineTo(x + r, y + h);
+    this.ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.ctx.lineTo(x, y + r);
+    this.ctx.quadraticCurveTo(x, y, x + r, y);
+    this.ctx.closePath();
+    this.ctx.fill();
+  }
+
   render() {
     const w = this.boardSize;
     const h = this.boardSize;
+    if (w <= 0 || h <= 0) return;
 
     // Board container background
     this.ctx.fillStyle = '#bbada0';
-    this.ctx.beginPath();
-    this.ctx.roundRect ? this.ctx.roundRect(0, 0, w, h, 10) : this.ctx.fillRect(0, 0, w, h);
-    this.ctx.fill();
+    this.drawRoundedRect(0, 0, w, h, 10);
 
     // Draw Grid & Tiles
     for (let r = 0; r < this.size; r++) {
@@ -342,18 +347,14 @@ export class Game2048 {
 
         // Empty tile placeholder
         this.ctx.fillStyle = 'rgba(238, 228, 218, 0.35)';
-        this.ctx.beginPath();
-        this.ctx.roundRect ? this.ctx.roundRect(x, y, s, s, 6) : this.ctx.fillRect(x, y, s, s);
-        this.ctx.fill();
+        this.drawRoundedRect(x, y, s, s, 6);
 
         // Render Active Tile
         if (val > 0) {
           const style = TILE_COLORS[val] || { bg: '#3c3a32', text: '#f9f6f2' };
 
           this.ctx.fillStyle = style.bg;
-          this.ctx.beginPath();
-          this.ctx.roundRect ? this.ctx.roundRect(x, y, s, s, 6) : this.ctx.fillRect(x, y, s, s);
-          this.ctx.fill();
+          this.drawRoundedRect(x, y, s, s, 6);
 
           // Value Text
           this.ctx.fillStyle = style.text;

@@ -40,7 +40,8 @@ export class MinesweeperGame {
     this.touchStartPos = null;
     this.touchCell = null;
     this.isLongPressTriggered = false;
-    this.longPressThresholdMs = 320;
+    this.longPressThresholdMs = 300;
+    this.isTouchActive = false;
 
     this.isRunning = false;
     this.initControls();
@@ -68,15 +69,20 @@ export class MinesweeperGame {
 
     const getPos = (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : (e.changedTouches && e.changedTouches.length > 0 ? e.changedTouches[0].clientX : e.clientX);
+      const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : (e.changedTouches && e.changedTouches.length > 0 ? e.changedTouches[0].clientY : e.clientY);
+      const logicalW = this.canvas.width / (window.devicePixelRatio || 1);
+      const logicalH = this.canvas.height / (window.devicePixelRatio || 1);
+      const scaleX = rect.width > 0 ? (logicalW / rect.width) : 1;
+      const scaleY = rect.height > 0 ? (logicalH / rect.height) : 1;
       return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
       };
     };
 
     const getCell = (pos) => {
+      if (this.cellSize <= 0) return null;
       const col = Math.floor(pos.x / this.cellSize);
       const row = Math.floor(pos.y / this.cellSize);
       if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
@@ -85,7 +91,7 @@ export class MinesweeperGame {
       return null;
     };
 
-    const onPointerDown = (e) => {
+    const handlePointerStart = (e) => {
       if (!this.isRunning || this.isGameOver || this.isVictory) return;
       const pos = getPos(e);
       const cell = getCell(pos);
@@ -109,12 +115,12 @@ export class MinesweeperGame {
       if (e.cancelable) e.preventDefault();
     };
 
-    const onPointerMove = (e) => {
+    const handlePointerMove = (e) => {
       if (!this.touchStartPos) return;
       const pos = getPos(e);
       const dist = Math.hypot(pos.x - this.touchStartPos.x, pos.y - this.touchStartPos.y);
 
-      if (dist > 8) {
+      if (dist > 10) {
         if (this.longPressTimer) {
           clearTimeout(this.longPressTimer);
           this.longPressTimer = null;
@@ -122,7 +128,7 @@ export class MinesweeperGame {
       }
     };
 
-    const onPointerUp = (e) => {
+    const handlePointerEnd = (e) => {
       if (this.longPressTimer) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
@@ -141,30 +147,42 @@ export class MinesweeperGame {
       this.touchStartPos = null;
       this.touchCell = null;
       this.isLongPressTriggered = false;
+      if (e && e.cancelable) e.preventDefault();
     };
 
-    this.canvas.addEventListener('touchstart', onPointerDown, { passive: false });
-    this.canvas.addEventListener('touchmove', onPointerMove, { passive: false });
-    this.canvas.addEventListener('touchend', onPointerUp, { passive: false });
+    this.canvas.addEventListener('touchstart', (e) => {
+      this.isTouchActive = true;
+      handlePointerStart(e);
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+    this.canvas.addEventListener('touchend', handlePointerEnd, { passive: false });
     this.canvas.addEventListener('touchcancel', () => {
       if (this.longPressTimer) clearTimeout(this.longPressTimer);
       this.touchStartPos = null;
+      this.touchCell = null;
     });
 
     this.canvas.addEventListener('mousedown', (e) => {
+      if (this.isTouchActive) return;
       if (e.button === 2) {
         e.preventDefault();
         const pos = getPos(e);
         const cell = getCell(pos);
         if (cell) this.toggleFlag(cell.r, cell.c);
       } else if (e.button === 0) {
-        onPointerDown(e);
+        handlePointerStart(e);
       }
     });
 
-    this.canvas.addEventListener('mousemove', onPointerMove);
+    this.canvas.addEventListener('mousemove', (e) => {
+      if (this.isTouchActive) return;
+      handlePointerMove(e);
+    });
+
     this.canvas.addEventListener('mouseup', (e) => {
-      if (e.button === 0) onPointerUp(e);
+      if (this.isTouchActive) return;
+      if (e.button === 0) handlePointerEnd(e);
     });
 
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -178,14 +196,13 @@ export class MinesweeperGame {
     const availW = rect.width > 50 ? rect.width : (window.innerWidth || 360);
     const availH = rect.height > 50 ? rect.height : (window.innerHeight - 120);
 
-    // Calculate maximum cell size that fits both availW and availH
     this.cellSize = Math.floor(Math.min(availW / this.cols, availH / this.rows));
     this.boardSizeW = this.cols * this.cellSize;
     this.boardSizeH = this.rows * this.cellSize;
     const dpr = window.devicePixelRatio || 1;
 
-    this.canvas.width = this.boardSizeW * dpr;
-    this.canvas.height = this.boardSizeH * dpr;
+    this.canvas.width = Math.floor(this.boardSizeW * dpr);
+    this.canvas.height = Math.floor(this.boardSizeH * dpr);
     this.canvas.style.width = `${this.boardSizeW}px`;
     this.canvas.style.height = `${this.boardSizeH}px`;
 
@@ -196,7 +213,8 @@ export class MinesweeperGame {
   }
 
   start() {
-    this.promptDifficulty();
+    // Automatically start with current level (default 1)
+    this.setDifficultyAndStart(this.currentLevel || 1);
   }
 
   promptDifficulty() {
@@ -384,7 +402,7 @@ export class MinesweeperGame {
         isNewHigh,
         isVictory: true,
         isTimeScore: true,
-        onRestart: () => this.promptDifficulty(),
+        onRestart: () => this.setDifficultyAndStart(this.currentLevel),
         onHome: () => this.onReturnHome()
       });
     } else {
@@ -407,7 +425,7 @@ export class MinesweeperGame {
         isNewHigh: false,
         isVictory: false,
         isTimeScore: true,
-        onRestart: () => this.promptDifficulty(),
+        onRestart: () => this.setDifficultyAndStart(this.currentLevel),
         onHome: () => this.onReturnHome()
       });
     }
@@ -428,6 +446,7 @@ export class MinesweeperGame {
   render() {
     const w = this.boardSizeW;
     const h = this.boardSizeH;
+    if (w <= 0 || h <= 0) return;
 
     this.ctx.fillStyle = '#0f172a';
     this.ctx.fillRect(0, 0, w, h);

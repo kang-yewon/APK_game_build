@@ -61,11 +61,11 @@ export class TetrisGame {
     const handleDown = () => { if (this.isRunning) { this.move(0, 1); sound.playMove(); } };
     const handleHardDrop = () => { if (this.isRunning) { this.hardDrop(); } };
 
-    btnLeft?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleLeft(); });
-    btnRight?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleRight(); });
-    btnRotate?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleRotate(); });
-    btnDown?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleDown(); });
-    btnDrop?.addEventListener('pointerdown', (e) => { e.preventDefault(); handleHardDrop(); });
+    btnLeft?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleLeft(); });
+    btnRight?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleRight(); });
+    btnRotate?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleRotate(); });
+    btnDown?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleDown(); });
+    btnDrop?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleHardDrop(); });
 
     // Keyboard
     window.addEventListener('keydown', (e) => {
@@ -117,11 +117,11 @@ export class TetrisGame {
     this.ctx.scale(dpr, dpr);
 
     // Board fits roughly 65% width, sidebar takes remainder
-    this.cellSize = Math.min(Math.floor((width * 0.62) / COLS), Math.floor((height - 16) / ROWS));
+    this.cellSize = Math.max(14, Math.min(Math.floor((width * 0.62) / COLS), Math.floor((height - 16) / ROWS)));
     this.boardWidth = this.cellSize * COLS;
     this.boardHeight = this.cellSize * ROWS;
     this.boardX = 10;
-    this.boardY = Math.floor((height - this.boardHeight) / 2);
+    this.boardY = Math.max(4, Math.floor((height - this.boardHeight) / 2));
     this.sidebarX = this.boardX + this.boardWidth + 12;
 
     this.render();
@@ -133,7 +133,6 @@ export class TetrisGame {
     this.lines = 0;
     this.level = 1;
     this.dropInterval = 750;
-    this.updateUI();
 
     this.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     this.nextPieces = [this.randomPiece(), this.randomPiece(), this.randomPiece()];
@@ -238,7 +237,6 @@ export class TetrisGame {
     this.score += dropDistance * 2;
     sound.playDrop();
     this.lockPiece();
-    this.updateUI();
   }
 
   getGhostY() {
@@ -286,16 +284,7 @@ export class TetrisGame {
 
       this.level = Math.floor(this.lines / 10) + 1;
       this.dropInterval = Math.max(120, 750 - (this.level - 1) * 60);
-
-      this.updateUI();
     }
-  }
-
-  updateUI() {
-    const scoreEl = document.getElementById('tetris-score');
-    const levelEl = document.getElementById('tetris-level');
-    if (scoreEl) scoreEl.textContent = this.score;
-    if (levelEl) levelEl.textContent = this.level;
   }
 
   gameOver() {
@@ -329,6 +318,7 @@ export class TetrisGame {
   render() {
     const w = this.canvas.width / (window.devicePixelRatio || 1);
     const h = this.canvas.height / (window.devicePixelRatio || 1);
+    if (w <= 0 || h <= 0) return;
 
     this.ctx.fillStyle = '#0b1322';
     this.ctx.fillRect(0, 0, w, h);
@@ -402,7 +392,7 @@ export class TetrisGame {
     // Score & Level Text
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.font = 'bold 12px sans-serif';
-    this.ctx.fillText('점수 (Score)', sx, sy + 15);
+    this.ctx.fillText('점수', sx, sy + 16);
 
     this.ctx.fillStyle = '#ffffff';
     this.ctx.font = 'bold 15px monospace';
@@ -410,7 +400,7 @@ export class TetrisGame {
 
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.font = 'bold 12px sans-serif';
-    this.ctx.fillText('레벨 (Level)', sx, sy + 75);
+    this.ctx.fillText('레벨', sx, sy + 75);
 
     this.ctx.fillStyle = '#38bdf8';
     this.ctx.font = 'bold 18px monospace';
@@ -419,16 +409,16 @@ export class TetrisGame {
     // Next Piece Box
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.font = 'bold 12px sans-serif';
-    this.ctx.fillText('다음 블록 (Next)', sx, sy + 135);
+    this.ctx.fillText('다음 블록', sx, sy + 135);
 
     const nextBoxY = sy + 148;
     this.ctx.fillStyle = '#142136';
-    this.ctx.fillRect(sx, nextBoxY, 80, 180);
+    this.ctx.fillRect(sx, nextBoxY, 80, 160);
 
     // Render 2 next pieces in the box
     this.nextPieces.slice(0, 2).forEach((piece, idx) => {
-      const pieceY = nextBoxY + 15 + idx * 80;
-      const miniCell = 14;
+      const pieceY = nextBoxY + 15 + idx * 75;
+      const miniCell = 13;
       const shape = piece.shape;
       const offX = sx + 40 - (shape[0].length * miniCell) / 2;
       const offY = pieceY + 25 - (shape.length * miniCell) / 2;
