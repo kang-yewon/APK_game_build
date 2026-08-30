@@ -2,65 +2,63 @@ import { sound } from '../sound.js';
 import { getHighScore, saveHighScore, gameTitles } from '../storage.js';
 import { modal } from '../modal.js';
 
-// Note frequencies (Hz) for Alan Walker - Faded (Eb minor)
-const NOTES = {
-  'REST': 0,
-  'Eb3': 155.56, 'Gb3': 185.00, 'Ab3': 207.65, 'Bb3': 233.08, 'B3': 246.94, 'Db4': 277.18,
+// Note pitch definitions (Hz) in Eb minor (Alan Walker - Faded)
+const PITCH = {
+  'Eb2': 77.78, 'Gb2': 92.50, 'Ab2': 103.83, 'Bb2': 116.54, 'B2': 123.47, 'Db3': 138.59,
+  'Eb3': 155.56, 'F3': 174.61, 'Gb3': 185.00, 'Ab3': 207.65, 'Bb3': 233.08, 'B3': 246.94, 'Db4': 277.18,
   'Eb4': 311.13, 'F4': 349.23, 'Gb4': 369.99, 'Ab4': 415.30, 'Bb4': 466.16, 'B4': 493.88,
   'Db5': 554.37, 'Eb5': 622.25, 'F5': 698.46, 'Gb5': 739.99, 'Ab5': 830.61, 'Bb5': 932.33
 };
 
-// Alan Walker - Faded Melody & Beat Sheet (Time in ms, Lane: 0=Left Drum, 1=Right Drum, Note tone)
-const FADED_SONG_DURATION = 58000; // ~58 seconds loop
 const BPM = 90;
-const BEAT = 60000 / BPM; // 666.67 ms per beat
+const BEAT = (60 / BPM) * 1000; // 666.67 ms per quarter beat
+const HALF_BEAT = BEAT / 2; // 333.33 ms (8th note)
+const Q_BEAT = BEAT / 4; // 166.67 ms (16th note)
 
-function generateFadedChart() {
-  const chart = [];
-  const startOffset = 2200; // ms lead-in
+// Master Faded BGM Sequence [timeInBeats, leadNote, bassNote, drumType: 'kick'|'snare'|'hat'|'']
+const FADED_MASTER_BGM = [
+  // --- INTRO (Beats 0 - 15) ---
+  [0.0, 'Eb4', 'Eb3', ''], [0.5, 'Bb4', '', ''], [1.0, 'Gb4', '', ''], [1.5, 'Ab4', '', ''],
+  [2.0, 'Bb4', 'B2', ''], [2.5, 'B4', '', ''], [3.0, 'Gb4', '', ''], [3.5, 'Ab4', '', ''],
+  [4.0, 'Db4', 'Db3', ''], [4.5, 'Ab4', '', ''], [5.0, 'F4', '', ''], [5.5, 'Gb4', '', ''],
+  [6.0, 'Ab4', 'Ab2', ''], [6.5, 'Bb4', '', ''], [7.0, 'Gb4', '', ''], [7.5, 'F4', '', ''],
+  [8.0, 'Eb4', 'Eb3', 'hat'], [8.5, 'Bb4', '', 'hat'], [9.0, 'Gb4', '', 'hat'], [9.5, 'Ab4', '', 'hat'],
+  [10.0, 'Bb4', 'B2', 'hat'], [10.5, 'B4', '', 'hat'], [11.0, 'Gb4', '', 'hat'], [11.5, 'Ab4', '', 'hat'],
+  [12.0, 'Db4', 'Db3', 'hat'], [12.5, 'Ab4', '', 'hat'], [13.0, 'F4', '', 'hat'], [13.5, 'Gb4', '', 'hat'],
+  [14.0, 'Ab4', 'Ab2', 'hat'], [14.5, 'Bb4', '', 'hat'], [15.0, 'Gb4', '', 'hat'], [15.5, 'F4', '', 'hat'],
 
-  // Faded Melody Pattern Data [timeOffsetInBeats, lane, noteName, isDrumBeat]
-  const pattern = [
-    // --- INTRO (Arpeggio) ---
-    [0.0, 0, 'Eb4'], [0.5, 1, 'Bb4'], [1.0, 0, 'Gb4'], [1.5, 1, 'Ab4'], [2.0, 0, 'Bb4'],
-    [2.5, 1, 'B4'], [3.0, 0, 'Gb4'], [3.5, 1, 'Ab4'],
-    [4.0, 0, 'Db4'], [4.5, 1, 'Ab4'], [5.0, 0, 'F4'], [5.5, 1, 'Gb4'], [6.0, 0, 'Ab4'],
-    [6.5, 1, 'Bb4'], [7.0, 0, 'Gb4'], [7.5, 1, 'F4'],
+  // --- VERSE ("You were the shadow to my light...") (Beats 16 - 31) ---
+  [16.0, 'Eb4', 'Eb3', 'kick'], [16.5, '', '', 'hat'], [17.0, 'Eb4', '', 'snare'], [17.5, 'Eb4', '', 'hat'],
+  [18.0, 'F4', 'B2', 'kick'], [18.5, 'Gb4', '', 'hat'], [19.0, 'Gb4', '', 'snare'], [19.5, 'F4', '', 'hat'],
+  [20.0, 'Eb4', 'Db3', 'kick'], [20.5, 'F4', '', 'hat'], [21.0, 'Gb4', '', 'snare'], [21.5, '', '', 'hat'],
+  [22.0, 'Db4', 'Ab2', 'kick'], [22.5, 'Db4', '', 'hat'], [23.0, 'Eb4', '', 'snare'], [23.5, 'Eb4', '', 'hat'],
+  [24.0, 'Gb4', 'Eb3', 'kick'], [24.5, 'F4', '', 'hat'], [25.0, 'Eb4', '', 'snare'], [25.5, 'F4', '', 'hat'],
+  [26.0, 'Gb4', 'B2', 'kick'], [26.5, 'Ab4', '', 'hat'], [27.0, 'Bb4', '', 'snare'], [27.5, '', '', 'hat'],
+  [28.0, 'Bb4', 'Db3', 'kick'], [28.5, '', '', 'hat'], [29.0, 'Bb4', '', 'snare'], [29.5, 'Ab4', '', 'hat'],
+  [30.0, 'Gb4', 'Ab2', 'kick'], [30.5, 'Ab4', '', 'hat'], [31.0, 'Bb4', '', 'snare'], [31.5, '', '', 'hat'],
 
-    // --- VERSE ("You were the shadow to my light...") ---
-    [8.0, 0, 'Eb4'], [8.75, 1, 'Eb4'], [9.5, 0, 'Eb4'], [10.0, 1, 'F4'], [10.5, 0, 'Gb4'],
-    [11.5, 1, 'Gb4'], [12.0, 0, 'F4'], [12.5, 1, 'Eb4'], [13.0, 0, 'F4'], [13.5, 1, 'Gb4'],
-    [14.5, 0, 'Db4'], [15.25, 1, 'Db4'], [16.0, 0, 'Eb4'], [16.75, 1, 'Eb4'], [17.5, 0, 'Gb4'],
-    [18.5, 1, 'F4'], [19.0, 0, 'Eb4'], [19.5, 1, 'F4'], [20.0, 0, 'Gb4'], [21.0, 1, 'Ab4'],
-    [22.0, 0, 'Bb4'], [23.0, 1, 'Bb4'],
+  // --- BUILD UP ("Where are you now...") (Beats 32 - 47) ---
+  [32.0, 'Bb4', 'Eb3', 'kick'], [32.5, 'Bb4', '', 'hat'], [33.0, 'Ab4', '', 'snare'], [33.5, 'Gb4', '', 'hat'],
+  [34.0, 'Ab4', 'B2', 'kick'], [34.5, 'Bb4', '', 'hat'], [35.0, 'Bb4', '', 'snare'], [35.5, 'Bb4', '', 'hat'],
+  [36.0, 'Ab4', 'Db3', 'kick'], [36.5, 'Gb4', '', 'hat'], [37.0, 'Ab4', '', 'snare'], [37.5, 'F4', '', 'hat'],
+  [38.0, 'Eb4', 'Ab2', 'kick'], [38.5, 'Gb4', '', 'hat'], [39.0, 'Bb4', '', 'snare'], [39.5, 'Db5', '', 'hat'],
+  [40.0, 'Eb5', 'Eb3', 'kick'], [40.5, '', '', 'snare'], [41.0, 'Db5', '', 'kick'], [41.5, 'Bb4', '', 'snare'],
+  [42.0, 'Ab4', 'B2', 'kick'], [42.5, 'Gb4', '', 'snare'], [43.0, 'Ab4', '', 'kick'], [43.5, 'Bb4', '', 'snare'],
+  [44.0, 'Eb5', 'Db3', 'kick'], [44.5, 'F5', '', 'snare'], [45.0, 'Gb5', '', 'kick'], [45.5, 'F5', '', 'snare'],
+  [46.0, 'Eb5', 'Ab2', 'kick'], [46.5, 'Db5', '', 'snare'], [47.0, 'Bb4', '', 'kick'], [47.5, 'Ab4', '', 'snare'],
 
-    // --- BUILD UP ("Where are you now...") ---
-    [24.0, 0, 'Bb4'], [24.5, 1, 'Bb4'], [25.0, 0, 'Ab4'], [25.5, 1, 'Gb4'], [26.0, 0, 'Ab4'], [27.0, 1, 'Bb4'],
-    [28.0, 0, 'Bb4'], [28.5, 1, 'Bb4'], [29.0, 0, 'Ab4'], [29.5, 1, 'Gb4'], [30.0, 0, 'Ab4'], [31.0, 1, 'F4'],
-    [32.0, 0, 'Eb4'], [32.5, 1, 'Gb4'], [33.0, 0, 'Bb4'], [33.5, 1, 'Db5'], [34.0, 0, 'Eb5'],
-    [35.0, 1, 'Db5'], [35.5, 0, 'Bb4'], [36.0, 1, 'Ab4'], [37.0, 0, 'Gb4'], [38.0, 1, 'Ab4'], [39.0, 0, 'Bb4'],
-
-    // --- CHORUS DROP ("I'm Faded... So Lost...") ---
-    [40.0, 0, 'Eb5'], [40.5, 1, 'Eb5'], [41.0, 0, 'Db5'], [41.5, 1, 'Bb4'], [42.0, 0, 'Ab4'], [42.5, 1, 'Gb4'],
-    [43.0, 0, 'Ab4'], [43.5, 1, 'Bb4'], [44.0, 0, 'Eb5'], [44.5, 1, 'Db5'], [45.0, 0, 'Bb4'], [45.5, 1, 'Ab4'],
-    [46.0, 0, 'Gb4'], [46.5, 1, 'Ab4'], [47.0, 0, 'Bb4'], [47.5, 1, 'Db5'], [48.0, 0, 'Eb5'], [48.5, 1, 'Gb5'],
-    [49.0, 0, 'F5'], [49.5, 1, 'Eb5'], [50.0, 0, 'Db5'], [50.5, 1, 'Bb4'], [51.0, 0, 'Ab4'], [51.5, 1, 'Gb4'],
-    [52.0, 0, 'Eb4'], [53.0, 1, 'Gb4'], [54.0, 0, 'Bb4'], [55.0, 1, 'Eb5'], [56.0, 0, 'Eb5']
-  ];
-
-  pattern.forEach(([beatOffset, lane, noteName]) => {
-    chart.push({
-      time: Math.round(startOffset + beatOffset * BEAT),
-      lane, // 0: Left Drum, 1: Right Drum
-      note: noteName,
-      freq: NOTES[noteName] || 440,
-      hit: false,
-      missed: false
-    });
-  });
-
-  return chart;
-}
+  // --- DROP / CHORUS ("I'm Faded...") (Beats 48 - 72) ---
+  [48.0, 'Eb5', 'Eb2', 'kick'], [48.5, 'Eb5', 'Eb3', 'hat'], [49.0, 'Db5', '', 'snare'], [49.5, 'Bb4', '', 'hat'],
+  [50.0, 'Ab4', 'B2', 'kick'], [50.5, 'Gb4', 'B3', 'hat'], [51.0, 'Ab4', '', 'snare'], [51.5, 'Bb4', '', 'hat'],
+  [52.0, 'Eb5', 'Db3', 'kick'], [52.5, 'Db5', 'Db4', 'hat'], [53.0, 'Bb4', '', 'snare'], [53.5, 'Ab4', '', 'hat'],
+  [54.0, 'Gb4', 'Ab2', 'kick'], [54.5, 'Ab4', 'Ab3', 'hat'], [55.0, 'Bb4', '', 'snare'], [55.5, 'Db5', '', 'hat'],
+  [56.0, 'Eb5', 'Eb2', 'kick'], [56.5, 'Gb5', 'Eb3', 'hat'], [57.0, 'F5', '', 'snare'], [57.5, 'Eb5', '', 'hat'],
+  [58.0, 'Db5', 'B2', 'kick'], [58.5, 'Bb4', 'B3', 'hat'], [59.0, 'Ab4', '', 'snare'], [59.5, 'Gb4', '', 'hat'],
+  [60.0, 'Eb4', 'Db3', 'kick'], [60.5, 'Gb4', 'Db4', 'hat'], [61.0, 'Bb4', '', 'snare'], [61.5, 'Eb5', '', 'hat'],
+  [62.0, 'Eb5', 'Ab2', 'kick'], [62.5, '', '', 'hat'], [63.0, 'Db5', '', 'snare'], [63.5, 'Bb4', '', 'hat'],
+  [64.0, 'Eb5', 'Eb2', 'kick'], [65.0, 'Db5', '', 'snare'], [66.0, 'Bb4', 'B2', 'kick'], [67.0, 'Ab4', '', 'snare'],
+  [68.0, 'Gb4', 'Db3', 'kick'], [69.0, 'Ab4', '', 'snare'], [70.0, 'Bb4', 'Ab2', 'kick'], [71.0, 'Eb4', '', 'snare']
+];
 
 export class RhythmGame {
   constructor(canvas, onReturnHome) {
@@ -75,19 +73,18 @@ export class RhythmGame {
 
     this.notes = [];
     this.particles = [];
-    this.judgements = []; // Floating 'PERFECT', 'GREAT', 'MISS'
+    this.judgements = [];
+    this.bgmEvents = [];
+    this.bgmEventIndex = 0;
 
-    // Drum hit states
+    // Drum hit states (vibration & pulse)
     this.leftDrumHitTime = 0;
     this.rightDrumHitTime = 0;
 
-    // Track audio playback time
+    // Time tracking
     this.startTime = 0;
     this.elapsedTime = 0;
-    this.audioScheduleIndex = 0;
-
-    // Note Speed & Fall duration
-    this.fallDurationMs = 1200; // Time from top to drum line
+    this.fallDurationMs = 1300; // ms for white disc to reach drum from top
 
     // Layout
     this.width = 360;
@@ -111,14 +108,14 @@ export class RhythmGame {
       if (!this.isRunning) return;
       this.leftDrumHitTime = performance.now();
       this.hitDrum(0);
-      sound.playPaddleHit();
+      this.playDrumAcoustic(0);
     };
 
     const handleRightHit = () => {
       if (!this.isRunning) return;
       this.rightDrumHitTime = performance.now();
       this.hitDrum(1);
-      sound.playPaddleHit();
+      this.playDrumAcoustic(1);
     };
 
     const attachDrumButton = (el, fn) => {
@@ -127,7 +124,7 @@ export class RhythmGame {
       const trigger = (e) => {
         if (e && e.cancelable) e.preventDefault();
         const now = Date.now();
-        if (now - last > 50) {
+        if (now - last > 45) {
           last = now;
           fn();
         }
@@ -155,7 +152,7 @@ export class RhythmGame {
       if (e.cancelable) e.preventDefault();
     }, { passive: false });
 
-    // Keyboard support (D/F or Left for Left Drum, J/K or Right for Right Drum)
+    // Keyboard (D/F or Left for Left Drum, J/K/Space or Right for Right Drum)
     window.addEventListener('keydown', (e) => {
       if (!this.isRunning) return;
       if (['KeyD', 'KeyF', 'ArrowLeft'].includes(e.code)) {
@@ -196,6 +193,66 @@ export class RhythmGame {
     this.render();
   }
 
+  // Generates procedurally randomized note chart for Faded so each game is fresh & dynamic!
+  generateDynamicChart() {
+    const chart = [];
+    const leadInMs = 2400; // ms lead-in before first note hits drum
+
+    let currentLane = Math.random() < 0.5 ? 0 : 1;
+    const seed = Math.random();
+
+    FADED_MASTER_BGM.forEach(([beatOffset, leadNote, bassNote, drumType], idx) => {
+      const noteTime = Math.round(leadInMs + beatOffset * BEAT);
+
+      // Procedural lane decision & rhythm variations
+      let shouldSpawn = false;
+      let targetLane = currentLane;
+
+      if (leadNote) {
+        // Melodic note
+        shouldSpawn = true;
+
+        // Dynamic lane transitions
+        if (Math.random() < 0.65) {
+          currentLane = 1 - currentLane; // Alternate lanes
+        }
+        targetLane = currentLane;
+
+      } else if (drumType === 'snare' || drumType === 'kick') {
+        // Beat-driven disc
+        if (beatOffset >= 16) {
+          shouldSpawn = Math.random() < 0.75;
+          targetLane = (drumType === 'kick') ? 0 : 1;
+        }
+      }
+
+      // Add variation: occasional double taps on strong drop beats
+      if (beatOffset >= 48 && (beatOffset % 2 === 0) && Math.random() < (0.3 + seed * 0.2)) {
+        chart.push({
+          time: noteTime,
+          lane: 0,
+          hit: false,
+          missed: false
+        });
+        chart.push({
+          time: noteTime,
+          lane: 1,
+          hit: false,
+          missed: false
+        });
+      } else if (shouldSpawn) {
+        chart.push({
+          time: noteTime,
+          lane: targetLane,
+          hit: false,
+          missed: false
+        });
+      }
+    });
+
+    return chart;
+  }
+
   start() {
     this.highScore = getHighScore('rhythm');
     this.score = 0;
@@ -204,8 +261,16 @@ export class RhythmGame {
     this.particles = [];
     this.judgements = [];
 
-    this.notes = generateFadedChart();
-    this.audioScheduleIndex = 0;
+    // Build fresh dynamic chart and BGM event queue
+    this.notes = this.generateDynamicChart();
+    this.bgmEvents = FADED_MASTER_BGM.map(([beatOffset, leadNote, bassNote, drumType]) => ({
+      time: Math.round(2400 + beatOffset * BEAT),
+      leadNote,
+      bassNote,
+      drumType,
+      played: false
+    }));
+    this.bgmEventIndex = 0;
 
     this.isRunning = true;
     this.resize();
@@ -221,6 +286,20 @@ export class RhythmGame {
   stop() {
     this.isRunning = false;
     cancelAnimationFrame(this.animationFrameId);
+  }
+
+  // Plays deep acoustic/electronic drum impact on hit
+  playDrumAcoustic(lane) {
+    if (!sound.isSoundEnabled()) return;
+    if (lane === 0) {
+      // Left Drum: Deep Taiko Bass 'DON'
+      sound.playTone(85, 'triangle', 0.12, 0, 0.28);
+      sound.playTone(55, 'sine', 0.18, 0, 0.35);
+    } else {
+      // Right Drum: Snappy Rim / Snare 'KA'
+      sound.playTone(420, 'square', 0.05, 0, 0.18);
+      sound.playTone(280, 'sawtooth', 0.08, 0, 0.2);
+    }
   }
 
   hitDrum(lane) {
@@ -263,26 +342,52 @@ export class RhythmGame {
       this.maxCombo = Math.max(this.maxCombo, this.combo);
       this.score += pts + this.combo * 10;
 
-      // Play the actual melody synthesizer note!
-      this.playSynthTone(closestNote.freq, 0.18);
-
-      // Hit particles
-      this.addHitParticles(drumX, drumY, color);
+      this.addHitParticles(drumX, drumY, color, 14);
       this.addJudgement(drumX, drumY - 50, text, color);
 
     } else {
-      // Tap without note nearby (minor feedback)
-      this.addHitParticles(drumX, drumY, 'rgba(255,255,255,0.4)', 4);
+      this.addHitParticles(drumX, drumY, 'rgba(255,255,255,0.3)', 4);
     }
 
     this.updateUI();
   }
 
-  playSynthTone(freq, duration = 0.15) {
-    if (!freq || freq <= 0) return;
-    sound.playTone(freq, 'sawtooth', duration, 0, 0.18);
-    // Add sub-bass resonance
-    sound.playTone(freq / 2, 'sine', duration * 1.2, 0, 0.12);
+  // Plays automatic background music in full sync with Alan Walker's Faded composition
+  updateBGM(currentTime) {
+    if (!sound.isSoundEnabled()) return;
+
+    while (this.bgmEventIndex < this.bgmEvents.length) {
+      const ev = this.bgmEvents[this.bgmEventIndex];
+      if (currentTime >= ev.time) {
+        ev.played = true;
+        this.bgmEventIndex++;
+
+        // 1. Play Lead Melody
+        if (ev.leadNote && PITCH[ev.leadNote]) {
+          const freq = PITCH[ev.leadNote];
+          // Warm sawtooth piano lead
+          sound.playTone(freq, 'sawtooth', 0.22, 0, 0.13);
+          sound.playTone(freq * 0.5, 'sine', 0.25, 0, 0.1);
+        }
+
+        // 2. Play Bass note
+        if (ev.bassNote && PITCH[ev.bassNote]) {
+          const freq = PITCH[ev.bassNote];
+          sound.playTone(freq, 'triangle', 0.35, 0, 0.16);
+        }
+
+        // 3. Play Drum Beat
+        if (ev.drumType === 'kick') {
+          sound.playTone(60, 'sine', 0.08, 0, 0.22);
+        } else if (ev.drumType === 'snare') {
+          sound.playTone(220, 'square', 0.06, 0, 0.12);
+        } else if (ev.drumType === 'hat') {
+          sound.playTone(900, 'square', 0.02, 0, 0.05);
+        }
+      } else {
+        break;
+      }
+    }
   }
 
   addHitParticles(x, y, color, count = 12) {
@@ -313,8 +418,8 @@ export class RhythmGame {
   update(now) {
     this.elapsedTime = now - this.startTime;
 
-    // 1. Play Background BGM chords & beats if needed
-    this.playAutoBGMTrack(this.elapsedTime);
+    // 1. Play automatic background music
+    this.updateBGM(this.elapsedTime);
 
     // 2. Check for Missed Notes
     this.notes.forEach(note => {
@@ -347,20 +452,12 @@ export class RhythmGame {
       if (j.alpha <= 0) this.judgements.splice(i, 1);
     }
 
-    // 5. Check Song End
-    const lastNoteTime = this.notes[this.notes.length - 1].time;
-    if (this.elapsedTime > lastNoteTime + 2500) {
-      this.songComplete();
-    }
-  }
-
-  playAutoBGMTrack(time) {
-    // Light backing bass pulse on every beat
-    const beatIndex = Math.floor((time - 2200) / BEAT);
-    if (beatIndex > this.audioScheduleIndex && beatIndex >= 0) {
-      this.audioScheduleIndex = beatIndex;
-      // Kick drum pulse
-      sound.playTone(65, 'triangle', 0.09, 0, 0.2);
+    // 5. Check Song Completion
+    if (this.notes.length > 0) {
+      const lastNoteTime = this.notes[this.notes.length - 1].time;
+      if (this.elapsedTime > lastNoteTime + 2200) {
+        this.songComplete();
+      }
     }
   }
 
@@ -404,7 +501,7 @@ export class RhythmGame {
 
     this.ctx.clearRect(0, 0, w, h);
 
-    // 1. Neon Stage Background
+    // 1. Neon Cyber Stage Background
     this.ctx.fillStyle = '#080c16';
     this.ctx.fillRect(0, 0, w, h);
 
@@ -412,14 +509,14 @@ export class RhythmGame {
     const lx = this.leftDrumX;
     const rx = this.rightDrumX;
 
-    // Track Gradients
-    this.ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
+    // Track Lane Gradients
+    this.ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
     this.ctx.fillRect(lx - 28, 0, 56, this.drumY);
 
-    this.ctx.fillStyle = 'rgba(244, 63, 94, 0.05)';
+    this.ctx.fillStyle = 'rgba(244, 63, 94, 0.06)';
     this.ctx.fillRect(rx - 28, 0, 56, this.drumY);
 
-    // Track guideline borders
+    // Track Borders
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
@@ -429,7 +526,7 @@ export class RhythmGame {
     this.ctx.moveTo(rx + 28, 0); this.ctx.lineTo(rx + 28, this.drumY);
     this.ctx.stroke();
 
-    // 3. Falling White Disc Notes
+    // 3. Falling Glowing White Disc Notes
     const now = this.elapsedTime;
     this.notes.forEach(note => {
       if (note.hit || note.missed) return;
