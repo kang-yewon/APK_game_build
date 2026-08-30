@@ -10,6 +10,7 @@ import { DinoGame } from './games/dino.js';
 import { MinesweeperGame } from './games/minesweeper.js';
 import { Game2048 } from './games/game2048.js';
 import { SuikaGame } from './games/suika.js';
+import { RhythmGame } from './games/rhythm.js';
 
 class App {
   constructor() {
@@ -118,6 +119,11 @@ class App {
     if (suikaCanvas) {
       this.games.suika = new SuikaGame(suikaCanvas, () => this.navigateTo('home'));
     }
+
+    const rhythmCanvas = document.getElementById('rhythm-canvas');
+    if (rhythmCanvas) {
+      this.games.rhythm = new RhythmGame(rhythmCanvas, () => this.navigateTo('home'));
+    }
   }
 
   initNavigation() {
@@ -196,6 +202,7 @@ class App {
         <div class="hs-row"><span>💣 ${gameTitles.minesweeper}</span><strong>${scores.minesweeper > 0 ? scores.minesweeper + '초' : '기록 없음'}</strong></div>
         <div class="hs-row"><span>🔢 ${gameTitles.game2048}</span><strong>${scores.game2048.toLocaleString()} 점</strong></div>
         <div class="hs-row"><span>🍉 ${gameTitles.suika}</span><strong>${scores.suika.toLocaleString()} 점</strong></div>
+        <div class="hs-row"><span>🥁 ${gameTitles.rhythm}</span><strong>${scores.rhythm.toLocaleString()} 점</strong></div>
       `;
     };
 
