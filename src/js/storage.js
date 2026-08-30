@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
   DINO: 'arcade_highscore_dino',
   MINESWEEPER: 'arcade_highscore_minesweeper',
   GAME2048: 'arcade_highscore_game2048',
-  GALAGA: 'arcade_highscore_galaga'
+  SUIKA: 'arcade_highscore_suika'
 };
 
 export const gameTitles = {
@@ -19,7 +19,7 @@ export const gameTitles = {
   dino: '크롬 공룡 게임',
   minesweeper: '지뢰 찾기 게임',
   game2048: '2048',
-  galaga: '갤러그 (Galaga)'
+  suika: '수박 게임 (Suika)'
 };
 
 export function getHighScore(gameKey) {
@@ -63,6 +63,6 @@ export function getAllHighScores() {
     dino: getHighScore('dino'),
     minesweeper: getHighScore('minesweeper'),
     game2048: getHighScore('game2048'),
-    galaga: getHighScore('galaga')
+    suika: getHighScore('suika')
   };
 }

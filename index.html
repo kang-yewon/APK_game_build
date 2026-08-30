@@ -172,10 +172,10 @@
             <div class="game-card-title">2048</div>
           </div>
 
-          <!-- 8. Galaga -->
-          <div class="game-card" data-game="galaga">
-            <div class="game-card-icon" style="background: linear-gradient(135deg, #e11d48, #fb7185);">👾</div>
-            <div class="game-card-title">갤러그</div>
+          <!-- 8. Suika Game -->
+          <div class="game-card" data-game="suika">
+            <div class="game-card-icon" style="background: linear-gradient(135deg, #22c55e, #15803d);">🍉</div>
+            <div class="game-card-title">수박 게임</div>
           </div>
         </div>
 
@@ -394,31 +394,30 @@
     </div>
 
     <!-- =========================================
-         9. GALAGA SCREEN
+         9. SUIKA (WATERMELON) SCREEN
          ========================================= -->
-    <div id="screen-galaga" class="screen-view hidden">
+    <div id="screen-suika" class="screen-view hidden">
       <header class="game-header">
         <button class="btn-header-home">
           <span>🏠</span> home
         </button>
-        <div class="game-header-info" style="display: flex; gap: 10px; font-size: 0.8rem;">
-          <span id="galaga-stage" style="color: #38bdf8;">STAGE 1</span>
-          <span id="galaga-score">SCORE: 0</span>
-          <span id="galaga-lives">❤️❤️❤️</span>
+        <div class="game-header-info" style="display: flex; gap: 12px; font-size: 0.8rem;">
+          <div>NEXT: <span id="suika-next-fruit" style="color: #fb7185;">🍒 체리</span></div>
+          <div id="suika-score" style="color: #22c55e;">SCORE: 0</div>
         </div>
       </header>
 
       <div class="game-canvas-area">
         <div class="canvas-frame">
-          <canvas id="galaga-canvas"></canvas>
+          <canvas id="suika-canvas"></canvas>
         </div>
       </div>
 
       <div class="pixel-controls-container">
         <div class="pixel-dpad-row" style="gap: 16px;">
-          <button id="galaga-btn-left" class="btn-pixel btn-pixel-square" style="width: 75px; height: 50px; font-size: 1.4rem;">&lt;</button>
-          <button id="galaga-btn-fire" class="btn-pixel btn-pixel-wide" style="background: #e11d48; width: 130px; height: 50px; font-weight: bold; font-size: 1.1rem;">🚀 FIRE</button>
-          <button id="galaga-btn-right" class="btn-pixel btn-pixel-square" style="width: 75px; height: 50px; font-size: 1.4rem;">&gt;</button>
+          <button id="suika-btn-left" class="btn-pixel btn-pixel-square" style="width: 70px; height: 48px; font-size: 1.4rem;">&lt;</button>
+          <button id="suika-btn-drop" class="btn-pixel btn-pixel-wide" style="background: #22c55e; width: 140px; height: 48px; font-weight: bold; font-size: 1.05rem;">⬇️ DROP</button>
+          <button id="suika-btn-right" class="btn-pixel btn-pixel-square" style="width: 70px; height: 48px; font-size: 1.4rem;">&gt;</button>
         </div>
       </div>
     </div>
