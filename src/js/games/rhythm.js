@@ -2,62 +2,78 @@ import { sound } from '../sound.js';
 import { getHighScore, saveHighScore, gameTitles } from '../storage.js';
 import { modal } from '../modal.js';
 
-// Note pitch definitions (Hz) in Eb minor (Alan Walker - Faded)
+// Pitch frequencies (Hz) for Avicii - Waiting for Love (F# minor / A major)
 const PITCH = {
-  'Eb2': 77.78, 'Gb2': 92.50, 'Ab2': 103.83, 'Bb2': 116.54, 'B2': 123.47, 'Db3': 138.59,
-  'Eb3': 155.56, 'F3': 174.61, 'Gb3': 185.00, 'Ab3': 207.65, 'Bb3': 233.08, 'B3': 246.94, 'Db4': 277.18,
-  'Eb4': 311.13, 'F4': 349.23, 'Gb4': 369.99, 'Ab4': 415.30, 'Bb4': 466.16, 'B4': 493.88,
-  'Db5': 554.37, 'Eb5': 622.25, 'F5': 698.46, 'Gb5': 739.99, 'Ab5': 830.61, 'Bb5': 932.33
+  'F#2': 92.50, 'G#2': 103.83, 'A2': 110.00, 'B2': 123.47, 'C#3': 138.59, 'D3': 146.83, 'E3': 164.81,
+  'F#3': 185.00, 'G#3': 207.65, 'A3': 220.00, 'B3': 246.94, 'C#4': 277.18, 'D4': 293.66, 'E4': 329.63,
+  'F#4': 369.99, 'G#4': 415.30, 'A4': 440.00, 'B4': 493.88, 'C#5': 554.37, 'D5': 587.33, 'E5': 659.25,
+  'F#5': 739.99, 'G#5': 830.61, 'A5': 880.00
 };
 
-const BPM = 90;
-const BEAT = (60 / BPM) * 1000; // 666.67 ms per quarter beat
-const HALF_BEAT = BEAT / 2; // 333.33 ms (8th note)
-const Q_BEAT = BEAT / 4; // 166.67 ms (16th note)
+// Avicii - Waiting for Love Tempo & Timing
+const BPM = 128; // 128 BPM Progressive House
+const BEAT = (60 / BPM) * 1000; // 468.75 ms
+const HALF_BEAT = BEAT / 2; // 234.375 ms (8th note)
+const Q_BEAT = BEAT / 4; // 117.1875 ms (16th note)
 
-// Master Faded BGM Sequence [timeInBeats, leadNote, bassNote, drumType: 'kick'|'snare'|'hat'|'']
-const FADED_MASTER_BGM = [
-  // --- INTRO (Beats 0 - 15) ---
-  [0.0, 'Eb4', 'Eb3', ''], [0.5, 'Bb4', '', ''], [1.0, 'Gb4', '', ''], [1.5, 'Ab4', '', ''],
-  [2.0, 'Bb4', 'B2', ''], [2.5, 'B4', '', ''], [3.0, 'Gb4', '', ''], [3.5, 'Ab4', '', ''],
-  [4.0, 'Db4', 'Db3', ''], [4.5, 'Ab4', '', ''], [5.0, 'F4', '', ''], [5.5, 'Gb4', '', ''],
-  [6.0, 'Ab4', 'Ab2', ''], [6.5, 'Bb4', '', ''], [7.0, 'Gb4', '', ''], [7.5, 'F4', '', ''],
-  [8.0, 'Eb4', 'Eb3', 'hat'], [8.5, 'Bb4', '', 'hat'], [9.0, 'Gb4', '', 'hat'], [9.5, 'Ab4', '', 'hat'],
-  [10.0, 'Bb4', 'B2', 'hat'], [10.5, 'B4', '', 'hat'], [11.0, 'Gb4', '', 'hat'], [11.5, 'Ab4', '', 'hat'],
-  [12.0, 'Db4', 'Db3', 'hat'], [12.5, 'Ab4', '', 'hat'], [13.0, 'F4', '', 'hat'], [13.5, 'Gb4', '', 'hat'],
-  [14.0, 'Ab4', 'Ab2', 'hat'], [14.5, 'Bb4', '', 'hat'], [15.0, 'Gb4', '', 'hat'], [15.5, 'F4', '', 'hat'],
+// Master Sequence for Avicii - Waiting for Love
+// Format: [beatOffset, leadNote, chordBass, drumType: 'kick'|'snare'|'hat'|'roll'|'']
+const AVICII_BGM_SCORE = [
+  // --- SECTION 1: INTRO PIANO RIFF ("Where there's a will...") (Beats 0 - 31) ---
+  // F#m (0-7)
+  [0.0, 'C#4', 'F#3', ''], [0.75, 'A4', '', ''], [1.5, 'F#4', 'F#2', ''], [2.5, 'C#4', '', ''],
+  [3.25, 'A4', 'F#3', ''], [4.0, 'F#4', '', 'hat'], [5.0, 'C#4', 'F#2', 'hat'], [6.0, 'A4', '', 'hat'], [7.0, 'F#4', '', 'hat'],
+  // D (8-15)
+  [8.0, 'D4', 'D3', 'hat'], [8.75, 'A4', '', 'hat'], [9.5, 'F#4', 'D2', 'hat'], [10.5, 'D4', '', 'hat'],
+  [11.25, 'A4', 'D3', 'hat'], [12.0, 'F#4', '', 'hat'], [13.0, 'D4', 'D2', 'hat'], [14.0, 'A4', '', 'hat'], [15.0, 'F#4', '', 'hat'],
+  // A (16-23)
+  [16.0, 'C#4', 'A3', 'kick'], [16.75, 'E4', '', 'hat'], [17.5, 'A4', 'A2', 'snare'], [18.5, 'C#4', '', 'hat'],
+  [19.25, 'E4', 'A3', 'kick'], [20.0, 'A4', '', 'snare'], [21.0, 'C#4', 'A2', 'kick'], [22.0, 'E4', '', 'snare'], [23.0, 'A4', '', 'hat'],
+  // E (24-31)
+  [24.0, 'B3', 'E3', 'kick'], [24.75, 'E4', '', 'hat'], [25.5, 'G#4', 'E2', 'snare'], [26.5, 'B3', '', 'hat'],
+  [27.25, 'E4', 'E3', 'kick'], [28.0, 'G#4', '', 'snare'], [29.0, 'B3', 'E2', 'kick'], [30.0, 'E4', '', 'snare'], [31.0, 'G#4', '', 'hat'],
 
-  // --- VERSE ("You were the shadow to my light...") (Beats 16 - 31) ---
-  [16.0, 'Eb4', 'Eb3', 'kick'], [16.5, '', '', 'hat'], [17.0, 'Eb4', '', 'snare'], [17.5, 'Eb4', '', 'hat'],
-  [18.0, 'F4', 'B2', 'kick'], [18.5, 'Gb4', '', 'hat'], [19.0, 'Gb4', '', 'snare'], [19.5, 'F4', '', 'hat'],
-  [20.0, 'Eb4', 'Db3', 'kick'], [20.5, 'F4', '', 'hat'], [21.0, 'Gb4', '', 'snare'], [21.5, '', '', 'hat'],
-  [22.0, 'Db4', 'Ab2', 'kick'], [22.5, 'Db4', '', 'hat'], [23.0, 'Eb4', '', 'snare'], [23.5, 'Eb4', '', 'hat'],
-  [24.0, 'Gb4', 'Eb3', 'kick'], [24.5, 'F4', '', 'hat'], [25.0, 'Eb4', '', 'snare'], [25.5, 'F4', '', 'hat'],
-  [26.0, 'Gb4', 'B2', 'kick'], [26.5, 'Ab4', '', 'hat'], [27.0, 'Bb4', '', 'snare'], [27.5, '', '', 'hat'],
-  [28.0, 'Bb4', 'Db3', 'kick'], [28.5, '', '', 'hat'], [29.0, 'Bb4', '', 'snare'], [29.5, 'Ab4', '', 'hat'],
-  [30.0, 'Gb4', 'Ab2', 'kick'], [30.5, 'Ab4', '', 'hat'], [31.0, 'Bb4', '', 'snare'], [31.5, '', '', 'hat'],
+  // --- SECTION 2: PRE-CHORUS BUILD-UP ("Monday left me broken, Tuesday...") (Beats 32 - 63) ---
+  // Monday left me broken (F#m)
+  [32.0, 'C#5', 'F#3', 'kick'], [33.0, 'C#5', '', 'snare'], [34.0, 'B4', 'F#2', 'kick'], [35.0, 'A4', '', 'snare'],
+  // Tuesday I was through with hoping (D)
+  [36.0, 'A4', 'D3', 'kick'], [37.0, 'G#4', '', 'snare'], [38.0, 'F#4', 'D2', 'kick'], [39.0, 'E4', '', 'snare'],
+  // Wednesday my empty arms were open (A)
+  [40.0, 'A4', 'A3', 'kick'], [41.0, 'A4', '', 'snare'], [42.0, 'B4', 'A2', 'kick'], [43.0, 'C#5', '', 'snare'],
+  // Thursday waiting for love (E)
+  [44.0, 'B4', 'E3', 'kick'], [45.0, 'A4', '', 'snare'], [46.0, 'G#4', 'E2', 'kick'], [47.0, 'F#4', '', 'snare'],
+  // Friday burning like a fire (F#m + accelerating snare roll)
+  [48.0, 'C#5', 'F#3', 'snare'], [48.5, 'C#5', '', 'snare'], [49.0, 'D5', '', 'snare'], [49.5, 'C#5', '', 'snare'],
+  [50.0, 'B4', 'D3', 'snare'], [50.5, 'A4', '', 'snare'], [51.0, 'B4', '', 'snare'], [51.5, 'C#5', '', 'snare'],
+  // Sunday waiting for love (A -> E riser roll)
+  [52.0, 'C#5', 'A3', 'roll'], [52.5, 'D5', '', 'roll'], [53.0, 'E5', '', 'roll'], [53.5, 'F#5', '', 'roll'],
+  [54.0, 'G#5', 'E3', 'roll'], [54.5, 'A5', '', 'roll'], [55.0, 'G#5', '', 'roll'], [55.5, 'F#5', '', 'roll'],
+  [56.0, 'E5', '', 'roll'], [57.0, 'C#5', '', 'roll'], [58.0, 'A4', '', 'roll'], [59.0, 'F#4', '', 'roll'],
+  [60.0, 'E4', '', 'roll'], [61.0, 'C#4', '', 'roll'], [62.0, '', '', ''], [63.0, 'C#5', '', 'hat'],
 
-  // --- BUILD UP ("Where are you now...") (Beats 32 - 47) ---
-  [32.0, 'Bb4', 'Eb3', 'kick'], [32.5, 'Bb4', '', 'hat'], [33.0, 'Ab4', '', 'snare'], [33.5, 'Gb4', '', 'hat'],
-  [34.0, 'Ab4', 'B2', 'kick'], [34.5, 'Bb4', '', 'hat'], [35.0, 'Bb4', '', 'snare'], [35.5, 'Bb4', '', 'hat'],
-  [36.0, 'Ab4', 'Db3', 'kick'], [36.5, 'Gb4', '', 'hat'], [37.0, 'Ab4', '', 'snare'], [37.5, 'F4', '', 'hat'],
-  [38.0, 'Eb4', 'Ab2', 'kick'], [38.5, 'Gb4', '', 'hat'], [39.0, 'Bb4', '', 'snare'], [39.5, 'Db5', '', 'hat'],
-  [40.0, 'Eb5', 'Eb3', 'kick'], [40.5, '', '', 'snare'], [41.0, 'Db5', '', 'kick'], [41.5, 'Bb4', '', 'snare'],
-  [42.0, 'Ab4', 'B2', 'kick'], [42.5, 'Gb4', '', 'snare'], [43.0, 'Ab4', '', 'kick'], [43.5, 'Bb4', '', 'snare'],
-  [44.0, 'Eb5', 'Db3', 'kick'], [44.5, 'F5', '', 'snare'], [45.0, 'Gb5', '', 'kick'], [45.5, 'F5', '', 'snare'],
-  [46.0, 'Eb5', 'Ab2', 'kick'], [46.5, 'Db5', '', 'snare'], [47.0, 'Bb4', '', 'kick'], [47.5, 'Ab4', '', 'snare'],
+  // --- SECTION 3: THE LEGENDARY AVICII DROP (Beats 64 - 100) ---
+  // Phrase 1 (F#m)
+  [64.0, 'C#5', 'F#2', 'kick'], [64.5, 'B4', '', 'hat'], [65.0, 'A4', '', 'snare'], [65.5, 'G#4', '', 'hat'],
+  [66.0, 'F#4', 'F#3', 'kick'], [66.5, 'A4', '', 'hat'], [67.0, 'G#4', '', 'snare'], [67.5, 'F#4', '', 'hat'],
+  // Phrase 2 (D)
+  [68.0, 'E4', 'D2', 'kick'], [68.5, 'F#4', '', 'hat'], [69.0, 'C#5', '', 'snare'], [69.5, 'D5', '', 'hat'],
+  [70.0, 'C#5', 'D3', 'kick'], [70.5, 'B4', '', 'hat'], [71.0, 'A4', '', 'snare'], [71.5, 'B4', '', 'hat'],
+  // Phrase 3 (A)
+  [72.0, 'C#5', 'A2', 'kick'], [72.5, 'E5', '', 'hat'], [73.0, 'C#5', '', 'snare'], [73.5, 'B4', '', 'hat'],
+  [74.0, 'A4', 'A3', 'kick'], [74.5, 'G#4', '', 'hat'], [75.0, 'F#4', '', 'snare'], [75.5, 'A4', '', 'hat'],
+  // Phrase 4 (E)
+  [76.0, 'G#4', 'E2', 'kick'], [76.5, 'F#4', '', 'hat'], [77.0, 'E4', '', 'snare'], [77.5, 'F#4', '', 'hat'],
+  [78.0, 'G#4', 'E3', 'kick'], [78.5, 'A4', '', 'hat'], [79.0, 'B4', '', 'snare'], [79.5, 'C#5', '', 'hat'],
 
-  // --- DROP / CHORUS ("I'm Faded...") (Beats 48 - 72) ---
-  [48.0, 'Eb5', 'Eb2', 'kick'], [48.5, 'Eb5', 'Eb3', 'hat'], [49.0, 'Db5', '', 'snare'], [49.5, 'Bb4', '', 'hat'],
-  [50.0, 'Ab4', 'B2', 'kick'], [50.5, 'Gb4', 'B3', 'hat'], [51.0, 'Ab4', '', 'snare'], [51.5, 'Bb4', '', 'hat'],
-  [52.0, 'Eb5', 'Db3', 'kick'], [52.5, 'Db5', 'Db4', 'hat'], [53.0, 'Bb4', '', 'snare'], [53.5, 'Ab4', '', 'hat'],
-  [54.0, 'Gb4', 'Ab2', 'kick'], [54.5, 'Ab4', 'Ab3', 'hat'], [55.0, 'Bb4', '', 'snare'], [55.5, 'Db5', '', 'hat'],
-  [56.0, 'Eb5', 'Eb2', 'kick'], [56.5, 'Gb5', 'Eb3', 'hat'], [57.0, 'F5', '', 'snare'], [57.5, 'Eb5', '', 'hat'],
-  [58.0, 'Db5', 'B2', 'kick'], [58.5, 'Bb4', 'B3', 'hat'], [59.0, 'Ab4', '', 'snare'], [59.5, 'Gb4', '', 'hat'],
-  [60.0, 'Eb4', 'Db3', 'kick'], [60.5, 'Gb4', 'Db4', 'hat'], [61.0, 'Bb4', '', 'snare'], [61.5, 'Eb5', '', 'hat'],
-  [62.0, 'Eb5', 'Ab2', 'kick'], [62.5, '', '', 'hat'], [63.0, 'Db5', '', 'snare'], [63.5, 'Bb4', '', 'hat'],
-  [64.0, 'Eb5', 'Eb2', 'kick'], [65.0, 'Db5', '', 'snare'], [66.0, 'Bb4', 'B2', 'kick'], [67.0, 'Ab4', '', 'snare'],
-  [68.0, 'Gb4', 'Db3', 'kick'], [69.0, 'Ab4', '', 'snare'], [70.0, 'Bb4', 'Ab2', 'kick'], [71.0, 'Eb4', '', 'snare']
+  // Drop Repeat 2 (Higher Energy with synths)
+  [80.0, 'C#5', 'F#2', 'kick'], [80.5, 'B4', '', 'hat'], [81.0, 'A4', '', 'snare'], [81.5, 'G#4', '', 'hat'],
+  [82.0, 'F#4', 'F#3', 'kick'], [82.5, 'A4', '', 'hat'], [83.0, 'G#4', '', 'snare'], [83.5, 'F#4', '', 'hat'],
+  [84.0, 'E4', 'D2', 'kick'], [84.5, 'F#4', '', 'hat'], [85.0, 'C#5', '', 'snare'], [85.5, 'D5', '', 'hat'],
+  [86.0, 'E5', 'D3', 'kick'], [86.5, 'D5', '', 'hat'], [87.0, 'C#5', '', 'snare'], [87.5, 'B4', '', 'hat'],
+  [88.0, 'A4', 'A2', 'kick'], [88.5, 'B4', '', 'hat'], [89.0, 'C#5', '', 'snare'], [89.5, 'D5', '', 'hat'],
+  [90.0, 'E5', 'A3', 'kick'], [90.5, 'F#5', '', 'hat'], [91.0, 'E5', '', 'snare'], [91.5, 'D5', '', 'hat'],
+  [92.0, 'C#5', 'E2', 'kick'], [92.5, 'B4', '', 'hat'], [93.0, 'A4', '', 'snare'], [93.5, 'G#4', '', 'hat'],
+  [94.0, 'F#4', 'E3', 'kick'], [95.0, 'F#4', '', 'snare'], [96.0, 'F#4', 'F#2', 'kick'], [97.0, 'F#4', '', 'snare']
 ];
 
 export class RhythmGame {
@@ -85,7 +101,7 @@ export class RhythmGame {
     // Time tracking
     this.startTime = 0;
     this.elapsedTime = 0;
-    this.fallDurationMs = 1300; // ms for white disc to reach drum from top
+    this.fallDurationMs = 1200; // ms for white disc to reach drum from top at 128 BPM
 
     // Layout
     this.width = 360;
@@ -153,7 +169,7 @@ export class RhythmGame {
       if (e.cancelable) e.preventDefault();
     }, { passive: false });
 
-    // Keyboard (D/F or Left for Left Drum, J/K/Space or Right for Right Drum)
+    // Keyboard support (D/F or Left for Left Drum, J/K/Space or Right for Right Drum)
     window.addEventListener('keydown', (e) => {
       if (!this.isRunning) return;
       if (['KeyD', 'KeyF', 'ArrowLeft'].includes(e.code)) {
@@ -194,17 +210,17 @@ export class RhythmGame {
     this.render();
   }
 
-  // Generates procedurally randomized note chart for Faded with distinct randomized pattern themes
+  // Generates procedurally randomized note chart for Avicii 128 BPM Waiting for Love
   generateDynamicChart() {
     const chart = [];
-    const leadInMs = 2400; // ms lead-in before first note hits drum
+    const leadInMs = 2000; // ms lead-in before first note hits drum
 
-    // 4 Distinct Pattern Themes chosen randomly each run
+    // 4 Distinct Pattern Archetypes chosen randomly each run
     const PATTERNS = [
-      { name: '멜로디 아르페지오', doubleChance: 0.12, streamChance: 0.15, swapRate: 0.55, syncopate: false },
-      { name: '비트 앤 드럼 러시', doubleChance: 0.35, streamChance: 0.38, swapRate: 0.40, syncopate: true },
-      { name: '좌우 트위스트 연타', doubleChance: 0.18, streamChance: 0.55, swapRate: 0.85, syncopate: false },
-      { name: '하이퍼 싱코페이션', doubleChance: 0.28, streamChance: 0.32, swapRate: 0.70, syncopate: true }
+      { name: '아비치 드롭 댄스', doubleChance: 0.25, streamChance: 0.35, swapRate: 0.65, syncopate: true },
+      { name: '피아노 앤 보컬 리듬', doubleChance: 0.15, streamChance: 0.20, swapRate: 0.50, syncopate: false },
+      { name: '좌우 128BPM 트위스트', doubleChance: 0.20, streamChance: 0.55, swapRate: 0.85, syncopate: false },
+      { name: 'EDM 4비트 킥 클랩', doubleChance: 0.40, streamChance: 0.40, swapRate: 0.45, syncopate: true }
     ];
 
     const style = PATTERNS[Math.floor(Math.random() * PATTERNS.length)];
@@ -212,31 +228,31 @@ export class RhythmGame {
 
     let curLane = Math.random() < 0.5 ? 0 : 1;
 
-    FADED_MASTER_BGM.forEach(([beatOffset, leadNote, bassNote, drumType]) => {
+    AVICII_BGM_SCORE.forEach(([beatOffset, leadNote, bassNote, drumType]) => {
       const baseTime = Math.round(leadInMs + beatOffset * BEAT);
 
-      // Section 1: Intro (0 - 15 beats)
-      if (beatOffset < 16) {
-        if (leadNote && (beatOffset % 1 === 0 || Math.random() < 0.7)) {
+      // Section 1: Intro Piano (0 - 31 beats)
+      if (beatOffset < 32) {
+        if (leadNote && (beatOffset % 1 === 0 || Math.random() < 0.75)) {
           if (Math.random() < style.swapRate) curLane = 1 - curLane;
           chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
         }
       }
-      // Section 2: Verse (16 - 31 beats)
-      else if (beatOffset < 32) {
+      // Section 2: Monday-Sunday Pre-Chorus (32 - 47 beats)
+      else if (beatOffset < 48) {
         if (leadNote || (drumType === 'kick' && Math.random() < 0.6)) {
           if (Math.random() < style.swapRate) curLane = 1 - curLane;
           chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
 
-          // Syncopated ghost note
+          // Syncopated 16th ghost note
           if (style.syncopate && Math.random() < 0.25) {
             chart.push({ time: baseTime + Q_BEAT, lane: 1 - curLane, hit: false, missed: false });
           }
         }
       }
-      // Section 3: Build-up (32 - 47 beats)
-      else if (beatOffset < 48) {
-        if (leadNote || drumType) {
+      // Section 3: Accelerating Snare Roll Riser (48 - 63 beats)
+      else if (beatOffset < 64) {
+        if (leadNote || drumType === 'snare' || drumType === 'roll') {
           if (Math.random() < style.swapRate) curLane = 1 - curLane;
           chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
 
@@ -246,11 +262,11 @@ export class RhythmGame {
           }
         }
       }
-      // Section 4: Chorus / Drop (48 - 72 beats)
+      // Section 4: Avicii Legendary Drop (64 - 100 beats)
       else {
         const isDouble = Math.random() < style.doubleChance;
         if (isDouble) {
-          // Double tap on both drums simultaneously!
+          // Double tap (both drums hit simultaneously on heavy drops)
           chart.push({ time: baseTime, lane: 0, hit: false, missed: false });
           chart.push({ time: baseTime, lane: 1, hit: false, missed: false });
         } else if (leadNote || drumType) {
@@ -279,8 +295,8 @@ export class RhythmGame {
 
     // Build fresh dynamic chart and BGM event queue
     this.notes = this.generateDynamicChart();
-    this.bgmEvents = FADED_MASTER_BGM.map(([beatOffset, leadNote, bassNote, drumType]) => ({
-      time: Math.round(2400 + beatOffset * BEAT),
+    this.bgmEvents = AVICII_BGM_SCORE.map(([beatOffset, leadNote, bassNote, drumType]) => ({
+      time: Math.round(2000 + beatOffset * BEAT),
       leadNote,
       bassNote,
       drumType,
@@ -304,17 +320,17 @@ export class RhythmGame {
     cancelAnimationFrame(this.animationFrameId);
   }
 
-  // Plays deep acoustic/electronic drum impact on hit
+  // Plays punchy acoustic/electronic drum impact on hit
   playDrumAcoustic(lane) {
     if (!sound.isSoundEnabled()) return;
     if (lane === 0) {
-      // Left Drum: Deep Taiko Bass 'DON'
-      sound.playTone(85, 'triangle', 0.12, 0, 0.28);
-      sound.playTone(55, 'sine', 0.18, 0, 0.35);
+      // Left Drum: Punchy Bass Drum 'DON'
+      sound.playTone(90, 'triangle', 0.10, 0, 0.30);
+      sound.playTone(60, 'sine', 0.16, 0, 0.35);
     } else {
-      // Right Drum: Snappy Rim / Snare 'KA'
-      sound.playTone(420, 'square', 0.05, 0, 0.18);
-      sound.playTone(280, 'sawtooth', 0.08, 0, 0.2);
+      // Right Drum: Snappy EDM Clap / Snare 'KA'
+      sound.playTone(480, 'square', 0.05, 0, 0.20);
+      sound.playTone(320, 'sawtooth', 0.08, 0, 0.22);
     }
   }
 
@@ -328,7 +344,7 @@ export class RhythmGame {
     this.notes.forEach(note => {
       if (note.lane === lane && !note.hit && !note.missed) {
         const diff = Math.abs(currentTime - note.time);
-        if (diff < minDiff && diff <= 220) {
+        if (diff < minDiff && diff <= 200) {
           minDiff = diff;
           closestNote = note;
         }
@@ -344,11 +360,11 @@ export class RhythmGame {
       let color = '#38bdf8';
       let pts = 100;
 
-      if (minDiff <= 55) {
+      if (minDiff <= 50) {
         text = 'PERFECT!';
         color = '#facc15';
         pts = 300;
-      } else if (minDiff <= 120) {
+      } else if (minDiff <= 110) {
         text = 'GREAT!';
         color = '#4ade80';
         pts = 200;
@@ -368,7 +384,7 @@ export class RhythmGame {
     this.updateUI();
   }
 
-  // Plays automatic background music in full sync with Alan Walker's Faded composition
+  // Synthesizes Avicii - Waiting for Love 128 BPM multi-voice EDM track
   updateBGM(currentTime) {
     if (!sound.isSoundEnabled()) return;
 
@@ -378,27 +394,28 @@ export class RhythmGame {
         ev.played = true;
         this.bgmEventIndex++;
 
-        // 1. Play Lead Melody
+        // 1. Play Lead Synth Melody (Avicii signature bright saw lead)
         if (ev.leadNote && PITCH[ev.leadNote]) {
           const freq = PITCH[ev.leadNote];
-          // Warm sawtooth piano lead
-          sound.playTone(freq, 'sawtooth', 0.22, 0, 0.13);
-          sound.playTone(freq * 0.5, 'sine', 0.25, 0, 0.1);
+          sound.playTone(freq, 'sawtooth', 0.18, 0, 0.15);
+          sound.playTone(freq * 0.5, 'sine', 0.20, 0, 0.12);
         }
 
-        // 2. Play Bass note
+        // 2. Play Bass note (Driving EDM bassline)
         if (ev.bassNote && PITCH[ev.bassNote]) {
           const freq = PITCH[ev.bassNote];
-          sound.playTone(freq, 'triangle', 0.35, 0, 0.16);
+          sound.playTone(freq, 'triangle', 0.28, 0, 0.18);
         }
 
-        // 3. Play Drum Beat
+        // 3. Play Drum Elements (Four-on-the-floor 128 BPM beat)
         if (ev.drumType === 'kick') {
-          sound.playTone(60, 'sine', 0.08, 0, 0.22);
+          sound.playTone(65, 'sine', 0.08, 0, 0.24);
         } else if (ev.drumType === 'snare') {
-          sound.playTone(220, 'square', 0.06, 0, 0.12);
+          sound.playTone(240, 'square', 0.06, 0, 0.14);
         } else if (ev.drumType === 'hat') {
-          sound.playTone(900, 'square', 0.02, 0, 0.05);
+          sound.playTone(950, 'square', 0.02, 0, 0.06);
+        } else if (ev.drumType === 'roll') {
+          sound.playTone(200 + Math.random() * 80, 'square', 0.04, 0, 0.10);
         }
       } else {
         break;
@@ -440,7 +457,7 @@ export class RhythmGame {
     // 2. Check for Missed Notes
     this.notes.forEach(note => {
       if (!note.hit && !note.missed) {
-        if (this.elapsedTime - note.time > 220) {
+        if (this.elapsedTime - note.time > 200) {
           note.missed = true;
           this.combo = 0;
           const drumX = note.lane === 0 ? this.leftDrumX : this.rightDrumX;
@@ -485,7 +502,7 @@ export class RhythmGame {
     this.highScore = getHighScore('rhythm');
 
     modal.show({
-      gameTitle: `🎵 Faded - ${this.currentPatternName} (완곡!)`,
+      gameTitle: `🎵 Avicii - Waiting for Love (${this.currentPatternName}) 완곡!`,
       score: this.score,
       highScore: this.highScore,
       isNewHigh,
@@ -520,8 +537,8 @@ export class RhythmGame {
 
     this.ctx.clearRect(0, 0, w, h);
 
-    // 1. Neon Cyber Stage Background
-    this.ctx.fillStyle = '#080c16';
+    // 1. Neon EDM Stage Background
+    this.ctx.fillStyle = '#090d1a';
     this.ctx.fillRect(0, 0, w, h);
 
     // 2. Note Falling Track Lanes
@@ -529,14 +546,14 @@ export class RhythmGame {
     const rx = this.rightDrumX;
 
     // Track Lane Gradients
-    this.ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
+    this.ctx.fillStyle = 'rgba(56, 189, 248, 0.07)';
     this.ctx.fillRect(lx - 28, 0, 56, this.drumY);
 
-    this.ctx.fillStyle = 'rgba(244, 63, 94, 0.06)';
+    this.ctx.fillStyle = 'rgba(244, 63, 94, 0.07)';
     this.ctx.fillRect(rx - 28, 0, 56, this.drumY);
 
     // Track Borders
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.moveTo(lx - 28, 0); this.ctx.lineTo(lx - 28, this.drumY);
@@ -559,7 +576,7 @@ export class RhythmGame {
         // Glowing White Disc Note
         this.ctx.save();
         this.ctx.shadowColor = note.lane === 0 ? '#38bdf8' : '#f43f5e';
-        this.ctx.shadowBlur = 12;
+        this.ctx.shadowBlur = 14;
 
         // Outer white ring
         this.ctx.fillStyle = '#ffffff';

@@ -21,7 +21,7 @@ export const gameTitles = {
   minesweeper: '지뢰 찾기 게임',
   game2048: '2048',
   suika: '수박 게임 (Suika)',
-  rhythm: '비트 드럼: Faded'
+  rhythm: '비트 드럼 (Waiting for Love)'
 };
 
 export function getHighScore(gameKey) {
