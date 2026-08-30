@@ -185,6 +185,27 @@ class SoundEngine {
     this.playTone(783.99, 'triangle', 0.1, 0.2, 0.15);
     this.playTone(1046.5, 'triangle', 0.3, 0.3, 0.2);
   }
+
+  // Galaga Laser Fire
+  playLaser() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.1);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch (e) {}
+  }
 }
 
 export const sound = new SoundEngine();

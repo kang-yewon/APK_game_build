@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
   BREAKOUT: 'arcade_highscore_breakout',
   DINO: 'arcade_highscore_dino',
   MINESWEEPER: 'arcade_highscore_minesweeper',
-  GAME2048: 'arcade_highscore_game2048'
+  GAME2048: 'arcade_highscore_game2048',
+  GALAGA: 'arcade_highscore_galaga'
 };
 
 export const gameTitles = {
@@ -17,7 +18,8 @@ export const gameTitles = {
   breakout: '벽돌 깨기 게임',
   dino: '크롬 공룡 게임',
   minesweeper: '지뢰 찾기 게임',
-  game2048: '2048'
+  game2048: '2048',
+  galaga: '갤러그 (Galaga)'
 };
 
 export function getHighScore(gameKey) {
@@ -60,6 +62,7 @@ export function getAllHighScores() {
     breakout: getHighScore('breakout'),
     dino: getHighScore('dino'),
     minesweeper: getHighScore('minesweeper'),
-    game2048: getHighScore('game2048')
+    game2048: getHighScore('game2048'),
+    galaga: getHighScore('galaga')
   };
 }

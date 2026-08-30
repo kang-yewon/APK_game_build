@@ -422,6 +422,7 @@ html, body {
 .game-card[data-game="breakout"] { border-color: #3498db; }
 .game-card[data-game="minesweeper"] { border-color: #95a5a6; }
 .game-card[data-game="game2048"] { border-color: #f59e0b; }
+.game-card[data-game="galaga"] { border-color: #f43f5e; }
 
 .game-card-icon {
   width: 90px;

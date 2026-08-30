@@ -9,6 +9,7 @@ import { BreakoutGame } from './games/breakout.js';
 import { DinoGame } from './games/dino.js';
 import { MinesweeperGame } from './games/minesweeper.js';
 import { Game2048 } from './games/game2048.js';
+import { GalagaGame } from './games/galaga.js';
 
 class App {
   constructor() {
@@ -112,6 +113,11 @@ class App {
     if (g2048Canvas) {
       this.games.game2048 = new Game2048(g2048Canvas, () => this.navigateTo('home'));
     }
+
+    const galagaCanvas = document.getElementById('galaga-canvas');
+    if (galagaCanvas) {
+      this.games.galaga = new GalagaGame(galagaCanvas, () => this.navigateTo('home'));
+    }
   }
 
   initNavigation() {
@@ -189,6 +195,7 @@ class App {
         <div class="hs-row"><span>🦖 ${gameTitles.dino}</span><strong>${scores.dino.toLocaleString()} 점</strong></div>
         <div class="hs-row"><span>💣 ${gameTitles.minesweeper}</span><strong>${scores.minesweeper > 0 ? scores.minesweeper + '초' : '기록 없음'}</strong></div>
         <div class="hs-row"><span>🔢 ${gameTitles.game2048}</span><strong>${scores.game2048.toLocaleString()} 점</strong></div>
+        <div class="hs-row"><span>👾 ${gameTitles.galaga}</span><strong>${scores.galaga.toLocaleString()} 점</strong></div>
       `;
     };
 
