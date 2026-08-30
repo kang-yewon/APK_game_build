@@ -55,17 +55,33 @@ export class TetrisGame {
     const btnDown = document.getElementById('tetris-btn-down');
     const btnDrop = document.getElementById('tetris-btn-drop');
 
-    const handleLeft = () => { if (this.isRunning) { this.move(-1, 0); sound.playMove(); } };
-    const handleRight = () => { if (this.isRunning) { this.move(1, 0); sound.playMove(); } };
-    const handleRotate = () => { if (this.isRunning) { this.rotatePiece(); } };
-    const handleDown = () => { if (this.isRunning) { this.move(0, 1); sound.playMove(); } };
-    const handleHardDrop = () => { if (this.isRunning) { this.hardDrop(); } };
+    const handleLeft = () => { if (this.isRunning) { this.move(-1, 0); sound.playMove(); this.render(); } };
+    const handleRight = () => { if (this.isRunning) { this.move(1, 0); sound.playMove(); this.render(); } };
+    const handleRotate = () => { if (this.isRunning) { this.rotatePiece(); this.render(); } };
+    const handleDown = () => { if (this.isRunning) { this.move(0, 1); sound.playMove(); this.render(); } };
+    const handleHardDrop = () => { if (this.isRunning) { this.hardDrop(); this.render(); } };
 
-    btnLeft?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleLeft(); });
-    btnRight?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleRight(); });
-    btnRotate?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleRotate(); });
-    btnDown?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleDown(); });
-    btnDrop?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleHardDrop(); });
+    const attachButtonEvent = (el, fn) => {
+      if (!el) return;
+      let lastTime = 0;
+      const trigger = (e) => {
+        if (e && e.cancelable) e.preventDefault();
+        const now = Date.now();
+        if (now - lastTime > 60) {
+          lastTime = now;
+          fn();
+        }
+      };
+      el.addEventListener('pointerdown', trigger);
+      el.addEventListener('touchstart', trigger, { passive: false });
+      el.addEventListener('click', trigger);
+    };
+
+    attachButtonEvent(btnLeft, handleLeft);
+    attachButtonEvent(btnRight, handleRight);
+    attachButtonEvent(btnRotate, handleRotate);
+    attachButtonEvent(btnDown, handleDown);
+    attachButtonEvent(btnDrop, handleHardDrop);
 
     // Keyboard
     window.addEventListener('keydown', (e) => {
@@ -83,7 +99,12 @@ export class TetrisGame {
     this.canvas.addEventListener('touchstart', (e) => {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
-    }, { passive: true });
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
 
     this.canvas.addEventListener('touchend', (e) => {
       if (!this.isRunning) return;
@@ -96,7 +117,8 @@ export class TetrisGame {
       } else if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
         handleRotate();
       }
-    }, { passive: true });
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
   }
 
   resize() {
@@ -305,6 +327,7 @@ export class TetrisGame {
 
   loop(currentTime) {
     if (!this.isRunning) return;
+    if (!this.lastDropTime) this.lastDropTime = currentTime;
 
     if (currentTime - this.lastDropTime >= this.dropInterval) {
       this.move(0, 1);
@@ -320,6 +343,7 @@ export class TetrisGame {
     const h = this.canvas.height / (window.devicePixelRatio || 1);
     if (w <= 0 || h <= 0) return;
 
+    this.ctx.clearRect(0, 0, w, h);
     this.ctx.fillStyle = '#0b1322';
     this.ctx.fillRect(0, 0, w, h);
 

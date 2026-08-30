@@ -60,10 +60,26 @@ export class Game2048 {
       }
     };
 
-    btnUp?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('up'); });
-    btnDown?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('down'); });
-    btnLeft?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('left'); });
-    btnRight?.addEventListener('pointerdown', (e) => { if (e.cancelable) e.preventDefault(); handleMove('right'); });
+    const attachButtonEvent = (el, dir) => {
+      if (!el) return;
+      let lastHandled = 0;
+      const trigger = (e) => {
+        if (e && e.cancelable) e.preventDefault();
+        const now = Date.now();
+        if (now - lastHandled > 80) {
+          lastHandled = now;
+          handleMove(dir);
+        }
+      };
+      el.addEventListener('pointerdown', trigger);
+      el.addEventListener('touchstart', trigger, { passive: false });
+      el.addEventListener('click', trigger);
+    };
+
+    attachButtonEvent(btnUp, 'up');
+    attachButtonEvent(btnDown, 'down');
+    attachButtonEvent(btnLeft, 'left');
+    attachButtonEvent(btnRight, 'right');
 
     // Keyboard
     window.addEventListener('keydown', (e) => {
@@ -74,19 +90,31 @@ export class Game2048 {
       else if (['ArrowRight', 'KeyD'].includes(e.code)) { handleMove('right'); e.preventDefault(); }
     });
 
-    // Touch Swipe on Canvas
+    // Touch Swipe on Canvas with touch-action cancellation prevention
     let touchStartX = 0;
     let touchStartY = 0;
+    let isSwiping = false;
 
     this.canvas.addEventListener('touchstart', (e) => {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
+      if (e.touches.length > 0) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = true;
+      }
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
 
     this.canvas.addEventListener('touchend', (e) => {
-      if (!this.isRunning || this.over) return;
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (!isSwiping || !this.isRunning || this.over) return;
+      isSwiping = false;
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
       const absX = Math.abs(dx);
       const absY = Math.abs(dy);
 
@@ -97,7 +125,8 @@ export class Game2048 {
           handleMove(dy > 0 ? 'down' : 'up');
         }
       }
-    }, { passive: true });
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
   }
 
   resize() {
@@ -108,7 +137,7 @@ export class Game2048 {
     const availW = rect.width > 50 ? rect.width : (window.innerWidth || 360);
     const availH = rect.height > 50 ? rect.height : (window.innerHeight - 170);
 
-    const size = Math.min(availW - 10, availH - 10, 420);
+    const size = Math.max(280, Math.min(availW - 12, availH - 12, 420));
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = Math.floor(size * dpr);
@@ -333,7 +362,8 @@ export class Game2048 {
     const h = this.boardSize;
     if (w <= 0 || h <= 0) return;
 
-    // Board container background
+    // Clear and background
+    this.ctx.clearRect(0, 0, w, h);
     this.ctx.fillStyle = '#bbada0';
     this.drawRoundedRect(0, 0, w, h, 10);
 

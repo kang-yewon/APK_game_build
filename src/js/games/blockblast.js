@@ -63,11 +63,13 @@ export class BlockBlastGame {
     this.trayHeight = 0;
     this.traySlotWidth = 0;
 
-    // Dragging state
+    // Dragging & Tapping state
     this.dragIndex = -1;
+    this.selectedTrayIndex = -1;
     this.dragX = 0;
     this.dragY = 0;
-    this.dragOffsetHoverY = -60; // Lift above finger for mobile visibility
+    this.dragOffsetHoverY = -50;
+    this.touchMoved = false;
 
     this.particles = [];
     this.isRunning = false;
@@ -94,22 +96,40 @@ export class BlockBlastGame {
     const onStart = (e) => {
       if (!this.isRunning) return;
       const pos = getPos(e);
+      this.touchMoved = false;
 
-      // Check if clicked in tray
-      if (pos.y >= this.trayY - 10 && pos.y <= this.trayY + this.trayHeight + 10) {
+      // 1. Check if clicked in Tray
+      if (pos.y >= this.trayY - 15 && pos.y <= this.trayY + this.trayHeight + 15) {
         const slotIdx = Math.floor(pos.x / this.traySlotWidth);
         if (slotIdx >= 0 && slotIdx < 3 && this.trayPieces[slotIdx]) {
           this.dragIndex = slotIdx;
+          this.selectedTrayIndex = slotIdx;
           this.dragX = pos.x;
           this.dragY = pos.y + this.dragOffsetHoverY;
           sound.playClick();
           if (e.cancelable) e.preventDefault();
+          return;
+        }
+      }
+
+      // 2. Check if tapped on Board with a previously selected tray piece
+      if (this.selectedTrayIndex !== -1 && this.trayPieces[this.selectedTrayIndex]) {
+        const piece = this.trayPieces[this.selectedTrayIndex];
+        const col = Math.floor((pos.x - this.boardX) / this.cellSize);
+        const row = Math.floor((pos.y - this.boardY) / this.cellSize);
+        if (row >= 0 && col >= 0 && this.canPlace(piece.matrix, row, col)) {
+          this.placePiece(piece, row, col, this.selectedTrayIndex);
+          this.selectedTrayIndex = -1;
+          this.dragIndex = -1;
+          if (e.cancelable) e.preventDefault();
+          return;
         }
       }
     };
 
     const onMove = (e) => {
       if (!this.isRunning || this.dragIndex === -1) return;
+      this.touchMoved = true;
       const pos = getPos(e);
       this.dragX = pos.x;
       this.dragY = pos.y + this.dragOffsetHoverY;
@@ -124,10 +144,11 @@ export class BlockBlastGame {
       const pieceIdx = this.dragIndex;
       const piece = this.trayPieces[pieceIdx];
 
-      if (piece) {
+      if (piece && this.touchMoved) {
         const gridPos = this.getGridCoordForPiece(piece, this.dragX, this.dragY);
         if (gridPos && this.canPlace(piece.matrix, gridPos.r, gridPos.c)) {
           this.placePiece(piece, gridPos.r, gridPos.c, pieceIdx);
+          this.selectedTrayIndex = -1;
         }
       }
       this.dragIndex = -1;
@@ -167,8 +188,8 @@ export class BlockBlastGame {
     this.boardY = 8;
     this.cellSize = this.boardSize / this.gridSize;
 
-    this.trayY = this.boardY + this.boardSize + 12;
-    this.trayHeight = Math.max(90, height - this.trayY - 8);
+    this.trayY = this.boardY + this.boardSize + 14;
+    this.trayHeight = Math.max(95, height - this.trayY - 10);
     this.traySlotWidth = width / 3;
 
     this.render();
@@ -178,6 +199,8 @@ export class BlockBlastGame {
     this.highScore = getHighScore('blockblast');
     this.score = 0;
     this.combo = 0;
+    this.selectedTrayIndex = -1;
+    this.dragIndex = -1;
     this.updateScoreUI();
 
     // Reset 8x8 Board
@@ -251,8 +274,14 @@ export class BlockBlastGame {
     const col = Math.round((pieceLeft - this.boardX) / this.cellSize);
     const row = Math.round((pieceTop - this.boardY) / this.cellSize);
 
-    if (row >= -1 && row <= this.gridSize && col >= -1 && col <= this.gridSize) {
+    if (row >= 0 && row + rows <= this.gridSize && col >= 0 && col + cols <= this.gridSize) {
       return { r: row, c: col };
+    }
+    // Allow slight tolerance
+    if (row >= -1 && row <= this.gridSize && col >= -1 && col <= this.gridSize) {
+      const clampedR = Math.max(0, Math.min(this.gridSize - rows, row));
+      const clampedC = Math.max(0, Math.min(this.gridSize - cols, col));
+      return { r: clampedR, c: clampedC };
     }
     return null;
   }
@@ -435,11 +464,11 @@ export class BlockBlastGame {
     const h = this.canvas.height / (window.devicePixelRatio || 1);
     if (w <= 0 || h <= 0) return;
 
-    // Background
+    this.ctx.clearRect(0, 0, w, h);
     this.ctx.fillStyle = '#0e1626';
     this.ctx.fillRect(0, 0, w, h);
 
-    // 1. Draw 8x8 Board Container & Bevel
+    // 1. Draw 8x8 Board Container
     this.ctx.fillStyle = '#1c283c';
     this.ctx.fillRect(this.boardX - 4, this.boardY - 4, this.boardSize + 8, this.boardSize + 8);
 
@@ -503,6 +532,12 @@ export class BlockBlastGame {
       const slotCenterX = (i + 0.5) * this.traySlotWidth;
       const slotCenterY = this.trayY + this.trayHeight / 2;
 
+      const isSelected = (i === this.selectedTrayIndex);
+      if (isSelected) {
+        this.ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+        this.drawRoundedRect(slotCenterX - 36, slotCenterY - 36, 72, 72, 8);
+      }
+
       const miniCellSize = Math.min(22, this.cellSize * 0.55);
       const rows = piece.matrix.length;
       const cols = piece.matrix[0].length;
@@ -518,7 +553,7 @@ export class BlockBlastGame {
       }
     }
 
-    // 6. Draw Dragging Piece (under finger / cursor)
+    // 6. Draw Dragging Piece
     if (this.dragIndex !== -1 && this.trayPieces[this.dragIndex]) {
       const piece = this.trayPieces[this.dragIndex];
       const rows = piece.matrix.length;
@@ -535,7 +570,7 @@ export class BlockBlastGame {
       }
     }
 
-    // 7. Draw Explosion Particles
+    // 7. Draw Particles
     this.particles.forEach(p => {
       this.ctx.fillStyle = p.color;
       this.ctx.globalAlpha = Math.max(0, p.life);
@@ -551,16 +586,13 @@ export class BlockBlastGame {
       this.ctx.shadowBlur = 12;
     }
 
-    // Main base
     this.ctx.fillStyle = color;
     this.ctx.fillRect(x, y, size, size);
 
-    // Bevel highlight (top & left)
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     this.ctx.fillRect(x, y, size, 3);
     this.ctx.fillRect(x, y, 3, size);
 
-    // Bevel shadow (bottom & right)
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     this.ctx.fillRect(x, y + size - 3, size, 3);
     this.ctx.fillRect(x + size - 3, y, 3, size);
