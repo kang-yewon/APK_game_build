@@ -25,7 +25,8 @@ export class Game2048 {
     this.onReturnHome = onReturnHome;
 
     this.size = 4; // 4x4 Grid
-    this.grid = [];
+    // Always initialize grid immediately in constructor
+    this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(0));
     this.score = 0;
     this.highScore = getHighScore('game2048');
     this.won = false;
@@ -66,7 +67,7 @@ export class Game2048 {
       const trigger = (e) => {
         if (e && e.cancelable) e.preventDefault();
         const now = Date.now();
-        if (now - lastHandled > 80) {
+        if (now - lastHandled > 60) {
           lastHandled = now;
           handleMove(dir);
         }
@@ -90,7 +91,7 @@ export class Game2048 {
       else if (['ArrowRight', 'KeyD'].includes(e.code)) { handleMove('right'); e.preventDefault(); }
     });
 
-    // Touch Swipe on Canvas with touch-action cancellation prevention
+    // Touch Swipe on Canvas
     let touchStartX = 0;
     let touchStartY = 0;
     let isSwiping = false;
@@ -137,7 +138,7 @@ export class Game2048 {
     const availW = rect.width > 50 ? rect.width : (window.innerWidth || 360);
     const availH = rect.height > 50 ? rect.height : (window.innerHeight - 170);
 
-    const size = Math.max(280, Math.min(availW - 12, availH - 12, 420));
+    const size = Math.max(260, Math.min(availW - 12, availH - 12, 420));
     const dpr = window.devicePixelRatio || 1;
 
     this.canvas.width = Math.floor(size * dpr);
@@ -161,10 +162,8 @@ export class Game2048 {
     this.won = false;
     this.over = false;
 
-    // Clear 4x4 Grid
+    // Clear 4x4 Grid and add 2 starting tiles
     this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(0));
-
-    // Spawn 2 initial tiles
     this.addRandomTile();
     this.addRandomTile();
 
@@ -182,6 +181,7 @@ export class Game2048 {
   }
 
   addRandomTile() {
+    if (!this.grid || this.grid.length < this.size) return;
     const emptyCells = [];
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
@@ -198,6 +198,7 @@ export class Game2048 {
   }
 
   move(direction) {
+    if (!this.grid || this.grid.length < this.size) return false;
     let rotatedGrid = this.copyGrid(this.grid);
 
     // Rotate to normalize as sliding LEFT
@@ -274,6 +275,8 @@ export class Game2048 {
   }
 
   checkGameState() {
+    if (!this.grid || this.grid.length < this.size) return;
+
     // Check 2048 victory once
     if (!this.won) {
       for (let r = 0; r < this.size; r++) {
@@ -367,10 +370,13 @@ export class Game2048 {
     this.ctx.fillStyle = '#bbada0';
     this.drawRoundedRect(0, 0, w, h, 10);
 
+    if (!this.grid || this.grid.length < this.size) return;
+
     // Draw Grid & Tiles
     for (let r = 0; r < this.size; r++) {
+      if (!this.grid[r]) continue;
       for (let c = 0; c < this.size; c++) {
-        const val = this.grid[r][c];
+        const val = this.grid[r][c] || 0;
         const x = this.cellPadding + c * (this.cellSize + this.cellPadding);
         const y = this.cellPadding + r * (this.cellSize + this.cellPadding);
         const s = this.cellSize;

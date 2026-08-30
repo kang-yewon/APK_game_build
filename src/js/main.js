@@ -164,7 +164,6 @@ class App {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (this.activeGameInstance) {
-            this.activeGameInstance.resize();
             this.activeGameInstance.start();
           }
         });

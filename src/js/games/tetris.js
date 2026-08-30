@@ -24,9 +24,11 @@ export class TetrisGame {
     this.ctx = canvas.getContext('2d');
     this.onReturnHome = onReturnHome;
 
-    this.grid = [];
+    // Always initialize valid data structures in constructor
+    this.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    this.nextPieces = [this.randomPiece(), this.randomPiece(), this.randomPiece()];
     this.currentPiece = null;
-    this.nextPieces = [];
+
     this.score = 0;
     this.lines = 0;
     this.level = 1;
@@ -138,7 +140,7 @@ export class TetrisGame {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
-    // Board fits roughly 65% width, sidebar takes remainder
+    // Calculate layout
     this.cellSize = Math.max(14, Math.min(Math.floor((width * 0.62) / COLS), Math.floor((height - 16) / ROWS)));
     this.boardWidth = this.cellSize * COLS;
     this.boardHeight = this.cellSize * ROWS;
@@ -184,6 +186,9 @@ export class TetrisGame {
   }
 
   spawnPiece() {
+    if (!this.nextPieces || this.nextPieces.length === 0) {
+      this.nextPieces = [this.randomPiece(), this.randomPiece(), this.randomPiece()];
+    }
     const next = this.nextPieces.shift();
     this.nextPieces.push(this.randomPiece());
 
@@ -199,13 +204,14 @@ export class TetrisGame {
   }
 
   checkCollision(x, y, shape) {
+    if (!this.grid || this.grid.length < ROWS) return false;
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
         if (shape[r][c]) {
           const nx = x + c;
           const ny = y + r;
           if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
-          if (ny >= 0 && this.grid[ny][nx]) return true;
+          if (ny >= 0 && this.grid[ny] && this.grid[ny][nx]) return true;
         }
       }
     }
@@ -271,12 +277,13 @@ export class TetrisGame {
   }
 
   lockPiece() {
+    if (!this.currentPiece) return;
     for (let r = 0; r < this.currentPiece.shape.length; r++) {
       for (let c = 0; c < this.currentPiece.shape[r].length; c++) {
         if (this.currentPiece.shape[r][c]) {
           const gy = this.currentPiece.y + r;
           const gx = this.currentPiece.x + c;
-          if (gy >= 0 && gy < ROWS && gx >= 0 && gx < COLS) {
+          if (gy >= 0 && gy < ROWS && gx >= 0 && gx < COLS && this.grid[gy]) {
             this.grid[gy][gx] = this.currentPiece.color;
           }
         }
@@ -288,9 +295,10 @@ export class TetrisGame {
   }
 
   clearLines() {
+    if (!this.grid || this.grid.length < ROWS) return;
     let cleared = 0;
     for (let r = ROWS - 1; r >= 0; r--) {
-      if (this.grid[r].every(cell => cell !== 0)) {
+      if (this.grid[r] && this.grid[r].every(cell => cell !== 0)) {
         this.grid.splice(r, 1);
         this.grid.unshift(Array(COLS).fill(0));
         cleared++;
@@ -370,8 +378,11 @@ export class TetrisGame {
       this.ctx.stroke();
     }
 
+    if (!this.grid || this.grid.length < ROWS) return;
+
     // 2. Draw Locked Grid Blocks
     for (let r = 0; r < ROWS; r++) {
+      if (!this.grid[r]) continue;
       for (let c = 0; c < COLS; c++) {
         if (this.grid[r][c]) {
           this.drawBlock(this.boardX + c * this.cellSize, this.boardY + r * this.cellSize, this.cellSize, this.grid[r][c]);
@@ -380,7 +391,7 @@ export class TetrisGame {
     }
 
     // 3. Draw Ghost Piece
-    if (this.currentPiece) {
+    if (this.currentPiece && this.currentPiece.shape) {
       const ghostY = this.getGhostY();
       for (let r = 0; r < this.currentPiece.shape.length; r++) {
         for (let c = 0; c < this.currentPiece.shape[r].length; c++) {
@@ -393,7 +404,7 @@ export class TetrisGame {
         }
       }
 
-      // 4. Draw Current Piece
+      // 4. Draw Current Active Piece
       for (let r = 0; r < this.currentPiece.shape.length; r++) {
         for (let c = 0; c < this.currentPiece.shape[r].length; c++) {
           if (this.currentPiece.shape[r][c]) {
@@ -439,22 +450,24 @@ export class TetrisGame {
     this.ctx.fillStyle = '#142136';
     this.ctx.fillRect(sx, nextBoxY, 80, 160);
 
-    // Render 2 next pieces in the box
-    this.nextPieces.slice(0, 2).forEach((piece, idx) => {
-      const pieceY = nextBoxY + 15 + idx * 75;
-      const miniCell = 13;
-      const shape = piece.shape;
-      const offX = sx + 40 - (shape[0].length * miniCell) / 2;
-      const offY = pieceY + 25 - (shape.length * miniCell) / 2;
+    if (this.nextPieces && this.nextPieces.length > 0) {
+      this.nextPieces.slice(0, 2).forEach((piece, idx) => {
+        if (!piece || !piece.shape) return;
+        const pieceY = nextBoxY + 15 + idx * 75;
+        const miniCell = 13;
+        const shape = piece.shape;
+        const offX = sx + 40 - (shape[0].length * miniCell) / 2;
+        const offY = pieceY + 25 - (shape.length * miniCell) / 2;
 
-      for (let r = 0; r < shape.length; r++) {
-        for (let c = 0; c < shape[r].length; c++) {
-          if (shape[r][c]) {
-            this.drawBlock(offX + c * miniCell, offY + r * miniCell, miniCell, piece.color);
+        for (let r = 0; r < shape.length; r++) {
+          for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+              this.drawBlock(offX + c * miniCell, offY + r * miniCell, miniCell, piece.color);
+            }
           }
         }
-      }
-    });
+      });
+    }
   }
 
   drawBlock(x, y, size, color) {

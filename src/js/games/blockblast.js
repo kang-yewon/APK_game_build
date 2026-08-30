@@ -46,8 +46,11 @@ export class BlockBlastGame {
     this.onReturnHome = onReturnHome;
 
     this.gridSize = 8; // 8x8 Board
-    this.board = [];
+    // Always initialize board and tray in constructor
+    this.board = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(null));
     this.trayPieces = [null, null, null];
+    this.spawnTrayPieces();
+
     this.score = 0;
     this.highScore = getHighScore('blockblast');
     this.combo = 0;
@@ -231,6 +234,7 @@ export class BlockBlastGame {
   }
 
   canPlace(matrix, row, col) {
+    if (!this.board || this.board.length < this.gridSize) return false;
     const rows = matrix.length;
     const cols = matrix[0].length;
 
@@ -242,7 +246,7 @@ export class BlockBlastGame {
           if (br < 0 || br >= this.gridSize || bc < 0 || bc >= this.gridSize) {
             return false;
           }
-          if (this.board[br][bc] !== null) {
+          if (this.board[br] && this.board[br][bc] !== null) {
             return false;
           }
         }
@@ -277,7 +281,6 @@ export class BlockBlastGame {
     if (row >= 0 && row + rows <= this.gridSize && col >= 0 && col + cols <= this.gridSize) {
       return { r: row, c: col };
     }
-    // Allow slight tolerance
     if (row >= -1 && row <= this.gridSize && col >= -1 && col <= this.gridSize) {
       const clampedR = Math.max(0, Math.min(this.gridSize - rows, row));
       const clampedC = Math.max(0, Math.min(this.gridSize - cols, col));
@@ -294,8 +297,10 @@ export class BlockBlastGame {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (piece.matrix[r][c] === 1) {
-          this.board[row + r][col + c] = piece.color;
-          blockCount++;
+          if (this.board[row + r]) {
+            this.board[row + r][col + c] = piece.color;
+            blockCount++;
+          }
         }
       }
     }
@@ -315,12 +320,13 @@ export class BlockBlastGame {
   }
 
   checkLines() {
+    if (!this.board || this.board.length < this.gridSize) return;
     const fullRows = [];
     const fullCols = [];
 
     // Rows
     for (let r = 0; r < this.gridSize; r++) {
-      if (this.board[r].every(cell => cell !== null)) {
+      if (this.board[r] && this.board[r].every(cell => cell !== null)) {
         fullRows.push(r);
       }
     }
@@ -329,7 +335,7 @@ export class BlockBlastGame {
     for (let c = 0; c < this.gridSize; c++) {
       let isFull = true;
       for (let r = 0; r < this.gridSize; r++) {
-        if (this.board[r][c] === null) {
+        if (!this.board[r] || this.board[r][c] === null) {
           isFull = false;
           break;
         }
@@ -365,13 +371,15 @@ export class BlockBlastGame {
 
       clearedSet.forEach(coord => {
         const [r, c] = coord.split(',').map(Number);
-        const color = this.board[r][c] || '#ffd026';
-        this.board[r][c] = null;
-        this.addExplosionParticles(
-          this.boardX + (c + 0.5) * this.cellSize,
-          this.boardY + (r + 0.5) * this.cellSize,
-          color
-        );
+        if (this.board[r]) {
+          const color = this.board[r][c] || '#ffd026';
+          this.board[r][c] = null;
+          this.addExplosionParticles(
+            this.boardX + (c + 0.5) * this.cellSize,
+            this.boardY + (r + 0.5) * this.cellSize,
+            color
+          );
+        }
       });
     } else {
       this.combo = 0;
@@ -475,8 +483,11 @@ export class BlockBlastGame {
     this.ctx.fillStyle = '#0f1724';
     this.ctx.fillRect(this.boardX, this.boardY, this.boardSize, this.boardSize);
 
+    if (!this.board || this.board.length < this.gridSize) return;
+
     // 2. Draw Grid Cells
     for (let r = 0; r < this.gridSize; r++) {
+      if (!this.board[r]) continue;
       for (let c = 0; c < this.gridSize; c++) {
         const x = this.boardX + c * this.cellSize;
         const y = this.boardY + r * this.cellSize;
@@ -525,29 +536,31 @@ export class BlockBlastGame {
     this.drawRoundedRect(10, this.trayY, w - 20, this.trayHeight, 10);
 
     // 5. Draw Tray Pieces
-    for (let i = 0; i < 3; i++) {
-      const piece = this.trayPieces[i];
-      if (!piece || i === this.dragIndex) continue;
+    if (this.trayPieces && this.trayPieces.length > 0) {
+      for (let i = 0; i < 3; i++) {
+        const piece = this.trayPieces[i];
+        if (!piece || i === this.dragIndex) continue;
 
-      const slotCenterX = (i + 0.5) * this.traySlotWidth;
-      const slotCenterY = this.trayY + this.trayHeight / 2;
+        const slotCenterX = (i + 0.5) * this.traySlotWidth;
+        const slotCenterY = this.trayY + this.trayHeight / 2;
 
-      const isSelected = (i === this.selectedTrayIndex);
-      if (isSelected) {
-        this.ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
-        this.drawRoundedRect(slotCenterX - 36, slotCenterY - 36, 72, 72, 8);
-      }
+        const isSelected = (i === this.selectedTrayIndex);
+        if (isSelected) {
+          this.ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+          this.drawRoundedRect(slotCenterX - 36, slotCenterY - 36, 72, 72, 8);
+        }
 
-      const miniCellSize = Math.min(22, this.cellSize * 0.55);
-      const rows = piece.matrix.length;
-      const cols = piece.matrix[0].length;
-      const startX = slotCenterX - (cols * miniCellSize) / 2;
-      const startY = slotCenterY - (rows * miniCellSize) / 2;
+        const miniCellSize = Math.min(22, this.cellSize * 0.55);
+        const rows = piece.matrix.length;
+        const cols = piece.matrix[0].length;
+        const startX = slotCenterX - (cols * miniCellSize) / 2;
+        const startY = slotCenterY - (rows * miniCellSize) / 2;
 
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (piece.matrix[r][c] === 1) {
-            this.drawBlock(startX + c * miniCellSize, startY + r * miniCellSize, miniCellSize - 2, piece.color);
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (piece.matrix[r][c] === 1) {
+              this.drawBlock(startX + c * miniCellSize, startY + r * miniCellSize, miniCellSize - 2, piece.color);
+            }
           }
         }
       }
