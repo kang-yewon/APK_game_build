@@ -70,6 +70,7 @@ export class RhythmGame {
     this.combo = 0;
     this.maxCombo = 0;
     this.highScore = getHighScore('rhythm');
+    this.currentPatternName = '랜덤 패턴';
 
     this.notes = [];
     this.particles = [];
@@ -193,63 +194,78 @@ export class RhythmGame {
     this.render();
   }
 
-  // Generates procedurally randomized note chart for Faded so each game is fresh & dynamic!
+  // Generates procedurally randomized note chart for Faded with distinct randomized pattern themes
   generateDynamicChart() {
     const chart = [];
     const leadInMs = 2400; // ms lead-in before first note hits drum
 
-    let currentLane = Math.random() < 0.5 ? 0 : 1;
-    const seed = Math.random();
+    // 4 Distinct Pattern Themes chosen randomly each run
+    const PATTERNS = [
+      { name: '멜로디 아르페지오', doubleChance: 0.12, streamChance: 0.15, swapRate: 0.55, syncopate: false },
+      { name: '비트 앤 드럼 러시', doubleChance: 0.35, streamChance: 0.38, swapRate: 0.40, syncopate: true },
+      { name: '좌우 트위스트 연타', doubleChance: 0.18, streamChance: 0.55, swapRate: 0.85, syncopate: false },
+      { name: '하이퍼 싱코페이션', doubleChance: 0.28, streamChance: 0.32, swapRate: 0.70, syncopate: true }
+    ];
 
-    FADED_MASTER_BGM.forEach(([beatOffset, leadNote, bassNote, drumType], idx) => {
-      const noteTime = Math.round(leadInMs + beatOffset * BEAT);
+    const style = PATTERNS[Math.floor(Math.random() * PATTERNS.length)];
+    this.currentPatternName = style.name;
 
-      // Procedural lane decision & rhythm variations
-      let shouldSpawn = false;
-      let targetLane = currentLane;
+    let curLane = Math.random() < 0.5 ? 0 : 1;
 
-      if (leadNote) {
-        // Melodic note
-        shouldSpawn = true;
+    FADED_MASTER_BGM.forEach(([beatOffset, leadNote, bassNote, drumType]) => {
+      const baseTime = Math.round(leadInMs + beatOffset * BEAT);
 
-        // Dynamic lane transitions
-        if (Math.random() < 0.65) {
-          currentLane = 1 - currentLane; // Alternate lanes
-        }
-        targetLane = currentLane;
-
-      } else if (drumType === 'snare' || drumType === 'kick') {
-        // Beat-driven disc
-        if (beatOffset >= 16) {
-          shouldSpawn = Math.random() < 0.75;
-          targetLane = (drumType === 'kick') ? 0 : 1;
+      // Section 1: Intro (0 - 15 beats)
+      if (beatOffset < 16) {
+        if (leadNote && (beatOffset % 1 === 0 || Math.random() < 0.7)) {
+          if (Math.random() < style.swapRate) curLane = 1 - curLane;
+          chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
         }
       }
+      // Section 2: Verse (16 - 31 beats)
+      else if (beatOffset < 32) {
+        if (leadNote || (drumType === 'kick' && Math.random() < 0.6)) {
+          if (Math.random() < style.swapRate) curLane = 1 - curLane;
+          chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
 
-      // Add variation: occasional double taps on strong drop beats
-      if (beatOffset >= 48 && (beatOffset % 2 === 0) && Math.random() < (0.3 + seed * 0.2)) {
-        chart.push({
-          time: noteTime,
-          lane: 0,
-          hit: false,
-          missed: false
-        });
-        chart.push({
-          time: noteTime,
-          lane: 1,
-          hit: false,
-          missed: false
-        });
-      } else if (shouldSpawn) {
-        chart.push({
-          time: noteTime,
-          lane: targetLane,
-          hit: false,
-          missed: false
-        });
+          // Syncopated ghost note
+          if (style.syncopate && Math.random() < 0.25) {
+            chart.push({ time: baseTime + Q_BEAT, lane: 1 - curLane, hit: false, missed: false });
+          }
+        }
+      }
+      // Section 3: Build-up (32 - 47 beats)
+      else if (beatOffset < 48) {
+        if (leadNote || drumType) {
+          if (Math.random() < style.swapRate) curLane = 1 - curLane;
+          chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
+
+          // Stream burst note
+          if (Math.random() < style.streamChance) {
+            chart.push({ time: baseTime + HALF_BEAT, lane: 1 - curLane, hit: false, missed: false });
+          }
+        }
+      }
+      // Section 4: Chorus / Drop (48 - 72 beats)
+      else {
+        const isDouble = Math.random() < style.doubleChance;
+        if (isDouble) {
+          // Double tap on both drums simultaneously!
+          chart.push({ time: baseTime, lane: 0, hit: false, missed: false });
+          chart.push({ time: baseTime, lane: 1, hit: false, missed: false });
+        } else if (leadNote || drumType) {
+          if (Math.random() < style.swapRate) curLane = 1 - curLane;
+          chart.push({ time: baseTime, lane: curLane, hit: false, missed: false });
+
+          if (Math.random() < style.streamChance) {
+            chart.push({ time: baseTime + Q_BEAT, lane: 1 - curLane, hit: false, missed: false });
+          }
+        }
       }
     });
 
+    // Sort by timestamp
+    chart.sort((a, b) => a.time - b.time);
     return chart;
   }
 
@@ -469,7 +485,7 @@ export class RhythmGame {
     this.highScore = getHighScore('rhythm');
 
     modal.show({
-      gameTitle: '🎵 Alan Walker - Faded (완곡!)',
+      gameTitle: `🎵 Faded - ${this.currentPatternName} (완곡!)`,
       score: this.score,
       highScore: this.highScore,
       isNewHigh,
@@ -482,8 +498,11 @@ export class RhythmGame {
   updateUI() {
     const scoreEl = document.getElementById('rhythm-score');
     const comboEl = document.getElementById('rhythm-combo');
+    const patternEl = document.getElementById('rhythm-pattern-style');
+
     if (scoreEl) scoreEl.textContent = `SCORE: ${this.score.toLocaleString()}`;
     if (comboEl) comboEl.textContent = this.combo > 1 ? `COMBO ${this.combo}🔥` : '';
+    if (patternEl) patternEl.textContent = `🎲 ${this.currentPatternName}`;
   }
 
   loop() {
