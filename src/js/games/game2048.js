@@ -25,17 +25,24 @@ export class Game2048 {
     this.onReturnHome = onReturnHome;
 
     this.size = 4; // 4x4 Grid
-    // Always initialize grid immediately in constructor
     this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(0));
+    this.tiles = [];
+    this.nextTileId = 1;
+
     this.score = 0;
     this.highScore = getHighScore('game2048');
     this.won = false;
     this.over = false;
 
-    // Layout
+    // Layout metrics
     this.boardSize = 0;
     this.cellSize = 0;
     this.cellPadding = 0;
+
+    // Animation state
+    this.isAnimating = false;
+    this.animStartTime = 0;
+    this.animDuration = 110; // ms for snappy slide
 
     this.isRunning = false;
     this.animationFrameId = null;
@@ -51,14 +58,7 @@ export class Game2048 {
 
     const handleMove = (dir) => {
       if (!this.isRunning || this.over) return;
-      const moved = this.move(dir);
-      if (moved) {
-        sound.playMove();
-        this.addRandomTile();
-        this.updateUI();
-        this.checkGameState();
-        this.render();
-      }
+      this.triggerMove(dir);
     };
 
     const attachButtonEvent = (el, dir) => {
@@ -161,11 +161,12 @@ export class Game2048 {
     this.score = 0;
     this.won = false;
     this.over = false;
-
-    // Clear 4x4 Grid and add 2 starting tiles
+    this.tiles = [];
     this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(0));
-    this.addRandomTile();
-    this.addRandomTile();
+
+    // Spawn 2 initial tiles
+    this.spawnTile();
+    this.spawnTile();
 
     this.updateUI();
     this.isRunning = true;
@@ -180,12 +181,11 @@ export class Game2048 {
     cancelAnimationFrame(this.animationFrameId);
   }
 
-  addRandomTile() {
-    if (!this.grid || this.grid.length < this.size) return;
+  spawnTile() {
     const emptyCells = [];
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
-        if (this.grid[r][c] === 0) {
+        if (!this.tiles.some(t => t.r === r && t.c === c && !t.isTrash)) {
           emptyCells.push({ r, c });
         }
       }
@@ -193,89 +193,168 @@ export class Game2048 {
 
     if (emptyCells.length > 0) {
       const cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-      this.grid[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
+      const val = Math.random() < 0.9 ? 2 : 4;
+      const tile = {
+        id: this.nextTileId++,
+        val,
+        r: cell.r,
+        c: cell.c,
+        fromR: cell.r,
+        fromC: cell.c,
+        isNew: true,
+        spawnTime: performance.now()
+      };
+      this.tiles.push(tile);
+      this.syncGrid();
     }
   }
 
-  move(direction) {
-    if (!this.grid || this.grid.length < this.size) return false;
-    let rotatedGrid = this.copyGrid(this.grid);
+  syncGrid() {
+    this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(0));
+    this.tiles.forEach(t => {
+      if (!t.isTrash) {
+        this.grid[t.r][t.c] = t.val;
+      }
+    });
+  }
 
-    // Rotate to normalize as sliding LEFT
-    if (direction === 'up') rotatedGrid = this.rotateLeft(rotatedGrid);
-    else if (direction === 'right') rotatedGrid = this.rotateLeft(this.rotateLeft(rotatedGrid));
-    else if (direction === 'down') rotatedGrid = this.rotateRight(rotatedGrid);
+  triggerMove(direction) {
+    if (this.isAnimating) {
+      // Finish previous animation immediately
+      this.finishMoveAnimation();
+    }
+
+    // Vectors
+    const vectors = {
+      up: { r: -1, c: 0 },
+      down: { r: 1, c: 0 },
+      left: { r: 0, c: -1 },
+      right: { r: 0, c: 1 }
+    };
+    const vector = vectors[direction];
+    if (!vector) return;
+
+    // Traversal order
+    const rOrder = direction === 'down' ? [3, 2, 1, 0] : [0, 1, 2, 3];
+    const cOrder = direction === 'right' ? [3, 2, 1, 0] : [0, 1, 2, 3];
 
     let moved = false;
     let gainedScore = 0;
 
-    for (let r = 0; r < this.size; r++) {
-      const row = rotatedGrid[r].filter(val => val !== 0);
-      const newRow = [];
+    // Clean any trash
+    this.tiles = this.tiles.filter(t => !t.isTrash);
 
-      for (let i = 0; i < row.length; i++) {
-        if (i < row.length - 1 && row[i] === row[i + 1]) {
-          const mergedVal = row[i] * 2;
-          newRow.push(mergedVal);
-          gainedScore += mergedVal;
-          i++; // Skip next because it was merged
-        } else {
-          newRow.push(row[i]);
+    // Track merged targets this turn
+    const mergedGrid = Array.from({ length: this.size }, () => Array(this.size).fill(false));
+
+    // Reset from coordinates
+    this.tiles.forEach(t => {
+      t.fromR = t.r;
+      t.fromC = t.c;
+      t.isNew = false;
+      t.merged = false;
+    });
+
+    rOrder.forEach(r => {
+      cOrder.forEach(c => {
+        const tile = this.tiles.find(t => t.r === r && t.c === c && !t.isTrash);
+        if (!tile) return;
+
+        let nextR = r;
+        let nextC = c;
+
+        // Slide as far as possible
+        while (true) {
+          const testR = nextR + vector.r;
+          const testC = nextC + vector.c;
+          if (testR < 0 || testR >= this.size || testC < 0 || testC >= this.size) break;
+
+          const blocker = this.tiles.find(t => t.r === testR && t.c === testC && !t.isTrash);
+          if (!blocker) {
+            nextR = testR;
+            nextC = testC;
+          } else if (blocker.val === tile.val && !mergedGrid[testR][testC] && !blocker.isTrash) {
+            // Merge possible!
+            nextR = testR;
+            nextC = testC;
+            break;
+          } else {
+            break;
+          }
         }
-      }
 
-      while (newRow.length < this.size) {
-        newRow.push(0);
-      }
+        if (nextR !== r || nextC !== c) {
+          const targetTile = this.tiles.find(t => t.r === nextR && t.c === nextC && !t.isTrash && t !== tile);
 
-      if (newRow.some((val, idx) => val !== rotatedGrid[r][idx])) {
-        moved = true;
-      }
-      rotatedGrid[r] = newRow;
-    }
+          if (targetTile && targetTile.val === tile.val && !mergedGrid[nextR][nextC]) {
+            // Merge!
+            moved = true;
+            mergedGrid[nextR][nextC] = true;
+            const newVal = tile.val * 2;
+            gainedScore += newVal;
 
-    // Rotate back to original orientation
-    if (direction === 'up') rotatedGrid = this.rotateRight(rotatedGrid);
-    else if (direction === 'right') rotatedGrid = this.rotateLeft(this.rotateLeft(rotatedGrid));
-    else if (direction === 'down') rotatedGrid = this.rotateLeft(rotatedGrid);
+            tile.fromR = r;
+            tile.fromC = c;
+            tile.r = nextR;
+            tile.c = nextC;
+            tile.isTrash = true;
+
+            targetTile.isTrash = true;
+
+            const mergedTile = {
+              id: this.nextTileId++,
+              val: newVal,
+              r: nextR,
+              c: nextC,
+              fromR: nextR,
+              fromC: nextC,
+              merged: true,
+              spawnTime: performance.now()
+            };
+            this.tiles.push(mergedTile);
+
+          } else {
+            // Simple slide
+            moved = true;
+            tile.fromR = r;
+            tile.fromC = c;
+            tile.r = nextR;
+            tile.c = nextC;
+          }
+        }
+      });
+    });
 
     if (moved) {
-      this.grid = rotatedGrid;
-      this.score += gainedScore;
+      sound.playMove();
       if (gainedScore > 0) {
         sound.playBrickHit();
+        this.score += gainedScore;
       }
-    }
+      this.syncGrid();
+      this.updateUI();
 
-    return moved;
+      this.isAnimating = true;
+      this.animStartTime = performance.now();
+    }
   }
 
-  rotateLeft(matrix) {
-    const res = Array.from({ length: this.size }, () => Array(this.size).fill(0));
-    for (let r = 0; r < this.size; r++) {
-      for (let c = 0; c < this.size; c++) {
-        res[this.size - 1 - c][r] = matrix[r][c];
-      }
-    }
-    return res;
-  }
+  finishMoveAnimation() {
+    this.isAnimating = false;
+    this.tiles = this.tiles.filter(t => !t.isTrash);
+    this.tiles.forEach(t => {
+      t.fromR = t.r;
+      t.fromC = t.c;
+      t.merged = false;
+      t.isNew = false;
+    });
 
-  rotateRight(matrix) {
-    const res = Array.from({ length: this.size }, () => Array(this.size).fill(0));
-    for (let r = 0; r < this.size; r++) {
-      for (let c = 0; c < this.size; c++) {
-        res[c][this.size - 1 - r] = matrix[r][c];
-      }
-    }
-    return res;
-  }
-
-  copyGrid(matrix) {
-    return matrix.map(row => [...row]);
+    this.spawnTile();
+    this.checkGameState();
   }
 
   checkGameState() {
-    if (!this.grid || this.grid.length < this.size) return;
+    this.syncGrid();
 
     // Check 2048 victory once
     if (!this.won) {
@@ -341,6 +420,14 @@ export class Game2048 {
 
   loop() {
     if (!this.isRunning) return;
+
+    if (this.isAnimating) {
+      const elapsed = performance.now() - this.animStartTime;
+      if (elapsed >= this.animDuration) {
+        this.finishMoveAnimation();
+      }
+    }
+
     this.render();
     this.animationFrameId = requestAnimationFrame(() => this.loop());
   }
@@ -365,46 +452,91 @@ export class Game2048 {
     const h = this.boardSize;
     if (w <= 0 || h <= 0) return;
 
-    // Clear and background
+    // Clear and background frame
     this.ctx.clearRect(0, 0, w, h);
     this.ctx.fillStyle = '#bbada0';
     this.drawRoundedRect(0, 0, w, h, 10);
 
-    if (!this.grid || this.grid.length < this.size) return;
-
-    // Draw Grid & Tiles
+    // 1. Draw 4x4 Empty Grid Cell Placeholders
     for (let r = 0; r < this.size; r++) {
-      if (!this.grid[r]) continue;
       for (let c = 0; c < this.size; c++) {
-        const val = this.grid[r][c] || 0;
         const x = this.cellPadding + c * (this.cellSize + this.cellPadding);
         const y = this.cellPadding + r * (this.cellSize + this.cellPadding);
         const s = this.cellSize;
 
-        // Empty tile placeholder
         this.ctx.fillStyle = 'rgba(238, 228, 218, 0.35)';
         this.drawRoundedRect(x, y, s, s, 6);
-
-        // Render Active Tile
-        if (val > 0) {
-          const style = TILE_COLORS[val] || { bg: '#3c3a32', text: '#f9f6f2' };
-
-          this.ctx.fillStyle = style.bg;
-          this.drawRoundedRect(x, y, s, s, 6);
-
-          // Value Text
-          this.ctx.fillStyle = style.text;
-          let fontSize = Math.floor(s * 0.44);
-          if (val >= 100 && val < 1000) fontSize = Math.floor(s * 0.38);
-          else if (val >= 1000 && val < 10000) fontSize = Math.floor(s * 0.3);
-          else if (val >= 10000) fontSize = Math.floor(s * 0.24);
-
-          this.ctx.font = `bold ${fontSize}px sans-serif`;
-          this.ctx.textAlign = 'center';
-          this.ctx.textBaseline = 'middle';
-          this.ctx.fillText(val.toString(), x + s / 2, y + s / 2 + 1);
-        }
       }
     }
+
+    // 2. Draw Active Sliding / Popping Tiles
+    const now = performance.now();
+    let animProgress = 1;
+    if (this.isAnimating) {
+      animProgress = Math.min(1, (now - this.animStartTime) / this.animDuration);
+    }
+    // Cubic ease-out
+    const ease = 1 - Math.pow(1 - animProgress, 3);
+
+    // Sort tiles so sliding tiles render under merging pop tiles
+    const renderList = [...this.tiles].sort((a, b) => (a.merged ? 1 : 0) - (b.merged ? 1 : 0));
+
+    renderList.forEach(tile => {
+      const startX = this.cellPadding + tile.fromC * (this.cellSize + this.cellPadding);
+      const startY = this.cellPadding + tile.fromR * (this.cellSize + this.cellPadding);
+      const endX = this.cellPadding + tile.c * (this.cellSize + this.cellPadding);
+      const endY = this.cellPadding + tile.r * (this.cellSize + this.cellPadding);
+
+      let currentX = startX + (endX - startX) * ease;
+      let currentY = startY + (endY - startY) * ease;
+      let s = this.cellSize;
+
+      // Scale effects for new tiles or merged tiles
+      let scale = 1;
+      if (tile.isNew) {
+        const spawnElapsed = now - tile.spawnTime;
+        if (spawnElapsed < 140) {
+          scale = 0.2 + 0.8 * (spawnElapsed / 140);
+        }
+      } else if (tile.merged) {
+        if (this.isAnimating) {
+          // Hidden while precursor tiles slide into position
+          return;
+        }
+        const popElapsed = now - tile.spawnTime;
+        if (popElapsed < 120) {
+          const t = popElapsed / 120;
+          scale = 1 + 0.2 * Math.sin(t * Math.PI);
+        }
+      }
+
+      const style = TILE_COLORS[tile.val] || { bg: '#3c3a32', text: '#f9f6f2' };
+
+      this.ctx.save();
+      if (scale !== 1) {
+        const cx = currentX + s / 2;
+        const cy = currentY + s / 2;
+        this.ctx.translate(cx, cy);
+        this.ctx.scale(scale, scale);
+        this.ctx.translate(-cx, -cy);
+      }
+
+      this.ctx.fillStyle = style.bg;
+      this.drawRoundedRect(currentX, currentY, s, s, 6);
+
+      // Text Value
+      this.ctx.fillStyle = style.text;
+      let fontSize = Math.floor(s * 0.44);
+      if (tile.val >= 100 && tile.val < 1000) fontSize = Math.floor(s * 0.38);
+      else if (tile.val >= 1000 && tile.val < 10000) fontSize = Math.floor(s * 0.3);
+      else if (tile.val >= 10000) fontSize = Math.floor(s * 0.24);
+
+      this.ctx.font = `bold ${fontSize}px sans-serif`;
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(tile.val.toString(), currentX + s / 2, currentY + s / 2 + 1);
+
+      this.ctx.restore();
+    });
   }
 }
